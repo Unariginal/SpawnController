@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "spawncontroller",
+  "version": "${version}",
+  "name": "SpawnController",
+  "description": "In-Game Cobblemon Spawn Pool Controller",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "me.unariginal.spawncontroller.SpawnController"
+    ]
+  },
+  "mixins": [
+    "spawncontroller.mixins.json",
+    {
+      "config": "spawncontroller.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}",
+    "cobblemon": "1.6.0"
+  }
+}
