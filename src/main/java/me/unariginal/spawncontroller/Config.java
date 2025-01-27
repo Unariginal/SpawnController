@@ -1,10 +1,11 @@
 package me.unariginal.spawncontroller;
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
-import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.google.gson.*;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.world.ServerWorld;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -60,15 +61,34 @@ public class Config {
 
         assert root != null;
         JsonObject rootObject = root.getAsJsonObject();
-        JsonArray blacklistObject = rootObject.get("blacklist").getAsJsonArray();
-        for (JsonElement element : blacklistObject) {
+
+        JsonArray speciesBlacklistObject = rootObject.get("species").getAsJsonArray();
+        for (JsonElement element : speciesBlacklistObject) {
             String speciesString = element.getAsString();
-            Pokemon temp = new Pokemon();
             Species species = PokemonSpecies.INSTANCE.getByName(speciesString.toLowerCase());
             if (species != null) {
-                temp.setSpecies(species);
+                SpawnController.instance.addToBlacklist(species);
             }
-            SpawnController.instance.addToBlacklist(temp);
+        }
+
+        JsonArray worldBlacklistObject = rootObject.get("worlds").getAsJsonArray();
+        for (JsonElement element : worldBlacklistObject) {
+            String worldString = element.getAsString();
+            for (ServerWorld world : SpawnController.instance.mcServer.getWorlds()) {
+                if ((world.getRegistryKey().getValue().getNamespace() + ":" + world.getRegistryKey().getValue().getPath()).equalsIgnoreCase(worldString)) {
+                    SpawnController.instance.addToBlacklist(world);
+                }
+            }
+        }
+
+        JsonArray biomeBlacklistObject = rootObject.get("biomes").getAsJsonArray();
+        for (JsonElement element : biomeBlacklistObject) {
+            String biomeString = element.getAsString();
+            SpawnController.instance.getBiomeList().forEach(biome -> SpawnController.instance.mcServer.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> {
+                if ((key.getValue().getNamespace() + ":" + key.getValue().getPath()).equalsIgnoreCase(biomeString)) {
+                    SpawnController.instance.addToBlacklist(biome);
+                }
+            }));
         }
     }
 
@@ -79,11 +99,23 @@ public class Config {
                 blacklistFile.createNewFile();
             }
             JsonObject root = new JsonObject();
-            JsonArray blacklist = new JsonArray();
-            SpawnController.instance.getBlacklist().forEach(pokemon -> {
-                blacklist.add(pokemon.getSpecies().getName());
+            JsonArray speciesList = new JsonArray();
+            SpawnController.instance.getSpeciesBlacklist().forEach(species -> {
+                speciesList.add(species.getName());
             });
-            root.add("blacklist", blacklist);
+            root.add("species", speciesList);
+
+            JsonArray worldsList = new JsonArray();
+            SpawnController.instance.getWorldBlacklist().forEach(world -> {
+                worldsList.add(world.getRegistryKey().getValue().getNamespace() + ":" + world.getRegistryKey().getValue().getPath());
+            });
+            root.add("worlds", worldsList);
+
+            JsonArray biomesList = new JsonArray();
+            SpawnController.instance.getBiomeBlacklist().forEach(biome -> {
+                SpawnController.instance.mcServer.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> biomesList.add(key.getValue().getNamespace() + ":" + key.getValue().getPath()));
+            });
+            root.add("biomes", biomesList);
 
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             Writer writer = new FileWriter(blacklistFile);
