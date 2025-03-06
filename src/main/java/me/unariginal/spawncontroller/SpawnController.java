@@ -16,16 +16,19 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.mojang.brigadier.arguments.FloatArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.datafixers.util.Either;
 import kotlin.Unit;
+import kotlin.ranges.IntRange;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.block.Block;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.item.Item;
 import net.minecraft.registry.RegistryKey;
@@ -48,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -463,6 +467,25 @@ public class SpawnController implements ModInitializer {
                                                                                             )
                                                                             )
                                                                             .then(
+                                                                                    CommandManager.literal("levelRange")
+                                                                                            .then(
+                                                                                                    CommandManager.argument("min", IntegerArgumentType.integer(1))
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("max", IntegerArgumentType.integer(1, 100))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int min = IntegerArgumentType.getInteger(ctx, "min");
+                                                                                                                                int max = IntegerArgumentType.getInteger(ctx, "max");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                if (detail instanceof PokemonSpawnDetail) {
+                                                                                                                                    ((PokemonSpawnDetail) detail).setLevelRange(new IntRange(min, max));
+                                                                                                                                }
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                            )
+                                                                            .then(
                                                                                     CommandManager.literal("condition")
                                                                                             .then(
                                                                                                     CommandManager.literal("isRaining")
@@ -475,9 +498,9 @@ public class SpawnController implements ModInitializer {
 
                                                                                                                                 SpawnDetail detail = getSpawnDetail(ctx);
                                                                                                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
-                                                                                                                                conditions.forEach(condition -> {
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
                                                                                                                                     condition.setRaining(status);
-                                                                                                                                });
+                                                                                                                                }
                                                                                                                                 detail.setConditions(conditions);
                                                                                                                                 updateSpawnPool(ctx, detail);
                                                                                                                                 return 1;
@@ -495,9 +518,9 @@ public class SpawnController implements ModInitializer {
 
                                                                                                                                 SpawnDetail detail = getSpawnDetail(ctx);
                                                                                                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
-                                                                                                                                conditions.forEach(condition -> {
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
                                                                                                                                     condition.setThundering(status);
-                                                                                                                                });
+                                                                                                                                }
                                                                                                                                 detail.setConditions(conditions);
                                                                                                                                 updateSpawnPool(ctx, detail);
                                                                                                                                 return 1;
@@ -515,9 +538,9 @@ public class SpawnController implements ModInitializer {
 
                                                                                                                                 SpawnDetail detail = getSpawnDetail(ctx);
                                                                                                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
-                                                                                                                                conditions.forEach(condition -> {
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
                                                                                                                                     condition.setSlimeChunk(status);
-                                                                                                                                });
+                                                                                                                                }
                                                                                                                                 detail.setConditions(conditions);
                                                                                                                                 updateSpawnPool(ctx, detail);
                                                                                                                                 return 1;
@@ -535,10 +558,1393 @@ public class SpawnController implements ModInitializer {
 
                                                                                                                                 SpawnDetail detail = getSpawnDetail(ctx);
                                                                                                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
-                                                                                                                                conditions.forEach(condition -> {
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
                                                                                                                                     condition.setCanSeeSky(status);
-                                                                                                                                });
+                                                                                                                                }
                                                                                                                                 detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("fluidIsSource")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("boolean", StringArgumentType.string())
+                                                                                                                            .suggests(this::suggestBoolean)
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String bool = StringArgumentType.getString(ctx, "boolean");
+                                                                                                                                Boolean status = getBoolOrNull(bool);
+
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setFluidIsSource(status);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("timeRange")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("time", StringArgumentType.string())
+                                                                                                                            .suggests((ctx, builder) -> {
+                                                                                                                                for (Map.Entry<String, TimeRange> entry : TimeRange.Companion.getTimeRanges().entrySet()) {
+                                                                                                                                    builder.suggest(entry.getKey());
+                                                                                                                                }
+                                                                                                                                builder.suggest("null");
+                                                                                                                                return builder.buildFuture();
+                                                                                                                            })
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String timeRange = StringArgumentType.getString(ctx, "time");
+                                                                                                                                TimeRange range = null;
+                                                                                                                                if (!timeRange.equalsIgnoreCase("null")) {
+                                                                                                                                    range = TimeRange.Companion.getTimeRanges().get(timeRange);
+                                                                                                                                }
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setTimeRange(range);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("moonPhase")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("phase", StringArgumentType.string())
+                                                                                                                            .suggests((ctx, builder) -> {
+                                                                                                                                for (Map.Entry<String, MoonPhaseRange> entry : MoonPhaseRange.Companion.getMoonPhaseRanges().entrySet()) {
+                                                                                                                                    builder.suggest(entry.getKey());
+                                                                                                                                }
+                                                                                                                                builder.suggest("null");
+                                                                                                                                return builder.buildFuture();
+                                                                                                                            })
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String moonPhase = StringArgumentType.getString(ctx, "phase");
+                                                                                                                                MoonPhaseRange range = null;
+                                                                                                                                if (!moonPhase.equals("null")) {
+                                                                                                                                    range = MoonPhaseRange.Companion.getMoonPhaseRanges().get(moonPhase);
+                                                                                                                                }
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMoonPhase(range);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minSkyLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinSkyLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinSkyLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxSkyLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxSkyLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxSkyLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minHeight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxHeight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minLureLevel")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMinLureLevel(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMinLureLevel(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxLureLevel")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minDepthSurface")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMinDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMinDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxDepthSurface")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minDepthSubmerged")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMinDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMinDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxDepthSubmerged")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minX")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinX(value);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinX(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxX")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxX(value);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxX(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minY")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinY(value);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinY(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxY")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxY(value);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxY(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minZ")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinZ(value);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinZ(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxZ")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxZ(value);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxZ(null);
+                                                                                                                                }
+                                                                                                                                detail.setConditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                            )
+                                                                            .then(
+                                                                                    CommandManager.literal("anticondition")
+                                                                                            .then(
+                                                                                                    CommandManager.literal("isRaining")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("boolean", StringArgumentType.string())
+                                                                                                                            .suggests(this::suggestBoolean)
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String bool = StringArgumentType.getString(ctx, "boolean");
+                                                                                                                                Boolean status = getBoolOrNull(bool);
+
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setRaining(status);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("isThundering")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("boolean", StringArgumentType.string())
+                                                                                                                            .suggests(this::suggestBoolean)
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String bool = StringArgumentType.getString(ctx, "boolean");
+                                                                                                                                Boolean status = getBoolOrNull(bool);
+
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setThundering(status);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("isSlimeChunk")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("boolean", StringArgumentType.string())
+                                                                                                                            .suggests(this::suggestBoolean)
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String bool = StringArgumentType.getString(ctx, "boolean");
+                                                                                                                                Boolean status = getBoolOrNull(bool);
+
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setSlimeChunk(status);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("canSeeSky")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("boolean", StringArgumentType.string())
+                                                                                                                            .suggests(this::suggestBoolean)
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String bool = StringArgumentType.getString(ctx, "boolean");
+                                                                                                                                Boolean status = getBoolOrNull(bool);
+
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setCanSeeSky(status);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("fluidIsSource")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("boolean", StringArgumentType.string())
+                                                                                                                            .suggests(this::suggestBoolean)
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String bool = StringArgumentType.getString(ctx, "boolean");
+                                                                                                                                Boolean status = getBoolOrNull(bool);
+
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setFluidIsSource(status);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("timeRange")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("time", StringArgumentType.string())
+                                                                                                                            .suggests((ctx, builder) -> {
+                                                                                                                                for (Map.Entry<String, TimeRange> entry : TimeRange.Companion.getTimeRanges().entrySet()) {
+                                                                                                                                    builder.suggest(entry.getKey());
+                                                                                                                                }
+                                                                                                                                builder.suggest("null");
+                                                                                                                                return builder.buildFuture();
+                                                                                                                            })
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String timeRange = StringArgumentType.getString(ctx, "time");
+                                                                                                                                TimeRange range = null;
+                                                                                                                                if (!timeRange.equalsIgnoreCase("null")) {
+                                                                                                                                    range = TimeRange.Companion.getTimeRanges().get(timeRange);
+                                                                                                                                }
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setTimeRange(range);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("moonPhase")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("phase", StringArgumentType.string())
+                                                                                                                            .suggests((ctx, builder) -> {
+                                                                                                                                for (Map.Entry<String, MoonPhaseRange> entry : MoonPhaseRange.Companion.getMoonPhaseRanges().entrySet()) {
+                                                                                                                                    builder.suggest(entry.getKey());
+                                                                                                                                }
+                                                                                                                                builder.suggest("null");
+                                                                                                                                return builder.buildFuture();
+                                                                                                                            })
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                String moonPhase = StringArgumentType.getString(ctx, "phase");
+                                                                                                                                MoonPhaseRange range = null;
+                                                                                                                                if (!moonPhase.equals("null")) {
+                                                                                                                                    range = MoonPhaseRange.Companion.getMoonPhaseRanges().get(moonPhase);
+                                                                                                                                }
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMoonPhase(range);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minSkyLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinSkyLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinSkyLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxSkyLight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("level", IntegerArgumentType.integer(0, 15))
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int level = IntegerArgumentType.getInteger(ctx, "level");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxSkyLight(level);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxSkyLight(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minHeight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxHeight")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                                                                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minLureLevel")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMinLureLevel(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMinLureLevel(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxLureLevel")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof FishingSpawningCondition) {
+                                                                                                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minDepthSurface")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMinDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMinDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxDepthSurface")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                                                                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minDepthSubmerged")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMinDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMinDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxDepthSubmerged")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", IntegerArgumentType.integer())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(value);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                                                                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(null);
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minX")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinX(value);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinX(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxX")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxX(value);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxX(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minY")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinY(value);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinY(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxY")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxY(value);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxY(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("minZ")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinZ(value);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMinZ(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                            )
+                                                                                            .then(
+                                                                                                    CommandManager.literal("maxZ")
+                                                                                                            .then(
+                                                                                                                    CommandManager.argument("value", FloatArgumentType.floatArg())
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                float value = FloatArgumentType.getFloat(ctx, "value");
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxZ(value);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
+                                                                                                                                updateSpawnPool(ctx, detail);
+                                                                                                                                return 1;
+                                                                                                                            })
+                                                                                                            )
+                                                                                                            .then(
+                                                                                                                    CommandManager.literal("null")
+                                                                                                                            .executes(ctx -> {
+                                                                                                                                SpawnDetail detail = getSpawnDetail(ctx);
+                                                                                                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                                                                                                for (SpawningCondition<?> condition : conditions) {
+                                                                                                                                    condition.setMaxZ(null);
+                                                                                                                                }
+                                                                                                                                detail.setAnticonditions(conditions);
                                                                                                                                 updateSpawnPool(ctx, detail);
                                                                                                                                 return 1;
                                                                                                                             })
@@ -608,14 +2014,14 @@ public class SpawnController implements ModInitializer {
     }
 
     private static @Nullable Boolean getBoolOrNull(String bool) {
-        Boolean isSlimeChunk;
+        Boolean boolOrNull;
 
         if (!bool.equals("null")) {
-            isSlimeChunk = Boolean.getBoolean(bool);
+            boolOrNull = bool.equalsIgnoreCase("true");
         } else {
-            isSlimeChunk = null;
+            boolOrNull = null;
         }
-        return isSlimeChunk;
+        return boolOrNull;
     }
 
     public CompletableFuture<Suggestions> suggestBoolean(CommandContext<ServerCommandSource> context, SuggestionsBuilder builder) {
@@ -848,18 +2254,19 @@ public class SpawnController implements ModInitializer {
             }
         }
 
-//                            if (condition instanceof GroundedTypeSpawningCondition<?> groundedCondition) {
-//                                if (groundedCondition.getNeededBaseBlocks() != null) {
-//                                    source.sendMessage(Text.literal(" - Needed Grounded Base Blocks:"));
-//                                    for (RegistryLikeCondition<Block> block : groundedCondition.getNeededBaseBlocks()) {
-//                                        for (Block key : mcServer.getRegistryManager().get(RegistryKeys.BLOCK).stream().toList()) {
-//                                            if (block.fits(key, mcServer.getRegistryManager().get(RegistryKeys.BLOCK))) {
-//                                                source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BLOCK).getEntry(key).getIdAsString()));
-//                                            }
-//                                        }
-//                                    }
-//                                }
-//                            }
+        if (condition instanceof GroundedTypeSpawningCondition<?> groundedCondition) {
+            if (groundedCondition.getNeededBaseBlocks() != null) {
+                source.sendMessage(Text.literal(" - Needed Grounded Base Blocks:"));
+                source.sendMessage(Text.literal(" -- Currently Too Long To Display"));
+//                for (RegistryLikeCondition<Block> block : groundedCondition.getNeededBaseBlocks()) {
+//                    for (Block key : mcServer.getRegistryManager().get(RegistryKeys.BLOCK).stream().toList()) {
+//                        if (block.fits(key, mcServer.getRegistryManager().get(RegistryKeys.BLOCK))) {
+//                            source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BLOCK).getEntry(key).getIdAsString()));
+//                        }
+//                    }
+//                }
+            }
+        }
 
         if (condition instanceof SubmergedTypeSpawningCondition<?> submergedCondition) {
             if (submergedCondition.getMinDepth() != null) {
@@ -901,18 +2308,19 @@ public class SpawnController implements ModInitializer {
             }
         }
 
-//                            if (condition instanceof SeafloorTypeSpawningCondition<?> seafloorCondition) {
-//                                if (seafloorCondition.getNeededBaseBlocks() != null) {
-//                                    source.sendMessage(Text.literal(" - Needed Sea Floor Base Blocks:"));
-//                                    for (RegistryLikeCondition<Block> block : seafloorCondition.getNeededBaseBlocks()) {
-//                                        for (Block key : mcServer.getRegistryManager().get(RegistryKeys.BLOCK).stream().toList()) {
-//                                            if (block.fits(key, mcServer.getRegistryManager().get(RegistryKeys.BLOCK))) {
-//                                                source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BLOCK).getEntry(key).getIdAsString()));
-//                                            }
-//                                        }
-//                                    }
-//                                }
-//                            }
+        if (condition instanceof SeafloorTypeSpawningCondition<?> seafloorCondition) {
+            if (seafloorCondition.getNeededBaseBlocks() != null) {
+                source.sendMessage(Text.literal(" - Needed Sea Floor Base Blocks:"));
+                source.sendMessage(Text.literal(" -- Currently Too Long To Display"));
+//                for (RegistryLikeCondition<Block> block : seafloorCondition.getNeededBaseBlocks()) {
+//                    for (Block key : mcServer.getRegistryManager().get(RegistryKeys.BLOCK).stream().toList()) {
+//                        if (block.fits(key, mcServer.getRegistryManager().get(RegistryKeys.BLOCK))) {
+//                            source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BLOCK).getEntry(key).getIdAsString()));
+//                        }
+//                    }
+//                }
+            }
+        }
 
         if (condition instanceof FishingSpawningCondition fishingCondition) {
             if (fishingCondition.getRod() != null) {
@@ -922,16 +2330,18 @@ public class SpawnController implements ModInitializer {
                     }
                 }
             }
-//                                if (fishingCondition.getNeededNearbyBlocks() != null) {
-//                                    source.sendMessage(Text.literal(" - Fishing Needed Nearby Blocks:"));
-//                                    for (RegistryLikeCondition<Block> block : fishingCondition.getNeededNearbyBlocks()) {
-//                                        for (Block key : mcServer.getRegistryManager().get(RegistryKeys.BLOCK).stream().toList()) {
-//                                            if (block.fits(key, mcServer.getRegistryManager().get(RegistryKeys.BLOCK))) {
-//                                                source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BLOCK).getEntry(key).getIdAsString()));
-//                                            }
-//                                        }
-//                                    }
-//                                }
+
+            if (fishingCondition.getNeededNearbyBlocks() != null) {
+                source.sendMessage(Text.literal(" - Fishing Needed Nearby Blocks:"));
+                source.sendMessage(Text.literal(" -- Currently Too Long To Display"));
+//                for (RegistryLikeCondition<Block> block : fishingCondition.getNeededNearbyBlocks()) {
+//                    for (Block key : mcServer.getRegistryManager().get(RegistryKeys.BLOCK).stream().toList()) {
+//                        if (block.fits(key, mcServer.getRegistryManager().get(RegistryKeys.BLOCK))) {
+//                            source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BLOCK).getEntry(key).getIdAsString()));
+//                        }
+//                    }
+//                }
+            }
 
             if (fishingCondition.getMinLureLevel() != null) {
                 source.sendMessage(Text.literal(" - Min Lure Level: " + fishingCondition.getMinLureLevel()));
