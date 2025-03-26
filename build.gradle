@@ -28,7 +28,7 @@ repositories {
         url = "https://maven.impactdev.net/repository/development/"
     }
     maven {
-        url = "https://gitlab.com/cable-mc/cobblemon"
+        url = "https://maven.nucleoid.xyz"
     }
 }
 
@@ -39,8 +39,11 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    modImplementation include("me.lucko:fabric-permissions-api:0.3.1")
+    modImplementation include("eu.pb4:sgui:1.6.1+1.21.1")
+
     modImplementation "com.cobblemon:fabric:${project.cobblemon_version}"
-    include(modImplementation('me.lucko:fabric-permissions-api:0.3.1'))
 }
 
 processResources {

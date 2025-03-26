@@ -25,13 +25,12 @@ import com.mojang.datafixers.util.Either;
 import kotlin.Unit;
 import kotlin.ranges.IntRange;
 import me.lucko.fabric.api.permissions.v0.Permissions;
+import me.unariginal.spawncontroller.commands.ControllerCommand;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.block.Block;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.item.Item;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.MinecraftServer;
@@ -53,21 +52,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SpawnController implements ModInitializer {
     public static final String MOD_ID = "spawncontroller";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    private final ArrayList<Species> speciesBlacklist = new ArrayList<>();
-    private final ArrayList<ServerWorld> worldBlacklist = new ArrayList<>();
-    private final ArrayList<Biome> biomeBlacklist = new ArrayList<>();
-    private final ArrayList<String> labelBlacklist = new ArrayList<>();
+    private final List<Species> speciesBlacklist = new ArrayList<>();
+    private final List<ServerWorld> worldBlacklist = new ArrayList<>();
+    private final List<Biome> biomeBlacklist = new ArrayList<>();
+    private final List<String> generationBlacklist = new ArrayList<>();
+    private final List<String> formBlacklist = new ArrayList<>();
+    private final List<String> groupBlacklist = new ArrayList<>();
+    private final List<String> customLabelBlacklist = new ArrayList<>();
+
+    private final List<Species> speciesWhitelist = new ArrayList<>();
+    private final List<ServerWorld> worldWhitelist = new ArrayList<>();
+    private final List<Biome> biomeWhitelist = new ArrayList<>();
+    private final List<String> generationWhitelist = new ArrayList<>();
+    private final List<String> formWhitelist = new ArrayList<>();
+    private final List<String> groupWhitelist = new ArrayList<>();
+    private final List<String> customLabelWhitelist = new ArrayList<>();
 
     private final List<Biome> registeredBiomes = new ArrayList<>();
 
-    private final List<String> generations = new ArrayList<>(List.of(
+    private final List<String> generations = List.of(
             CobblemonPokemonLabels.GENERATION_1,
             CobblemonPokemonLabels.GENERATION_2,
             CobblemonPokemonLabels.GENERATION_3,
@@ -79,9 +87,9 @@ public class SpawnController implements ModInitializer {
             CobblemonPokemonLabels.GENERATION_8,
             CobblemonPokemonLabels.GENERATION_8A,
             CobblemonPokemonLabels.GENERATION_9
-    ));
+    );
 
-    private final List<String> forms = new ArrayList<>(List.of(
+    private final List<String> forms = List.of(
             CobblemonPokemonLabels.ALOLAN_FORM,
             CobblemonPokemonLabels.GALARIAN_FORM,
             CobblemonPokemonLabels.HISUIAN_FORM,
@@ -97,9 +105,9 @@ public class SpawnController implements ModInitializer {
             CobblemonPokemonLabels.TOTEM,
             CobblemonPokemonLabels.REGIONAL,
             CobblemonPokemonLabels.PRIMAL
-    ));
+    );
 
-    private final List<String> groups = new ArrayList<>(List.of(
+    private final List<String> groups = List.of(
             CobblemonPokemonLabels.BABY,
             CobblemonPokemonLabels.FOSSIL,
             CobblemonPokemonLabels.LEGENDARY,
@@ -110,303 +118,22 @@ public class SpawnController implements ModInitializer {
             CobblemonPokemonLabels.RESTRICTED,
             CobblemonPokemonLabels.CUSTOM,
             CobblemonPokemonLabels.CUSTOMIZED_OFFICIAL
-    ));
+    );
 
-    public static SpawnController instance;
+    public static SpawnController INSTANCE;
     public Config config;
-    public MinecraftServer mcServer;
+    public MinecraftServer server;
 
     @Override
     public void onInitialize() {
         LOGGER.info("[SpawnController] Loading mod..");
+        INSTANCE = this;
+
+        CommandRegistrationCallback.EVENT.register(ControllerCommand::register);
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(
                     CommandManager.literal("spawncontroller")
-                            .then(
-                                    CommandManager.literal("disable")
-                                            .then(
-                                                    CommandManager.literal("species")
-                                                            .then(
-                                                                    CommandManager.argument("species", SpeciesArgumentType.Companion.species())
-                                                                            .requires(Permissions.require("spawncontroller.species", 4))
-                                                                            .suggests((context, builder) -> {
-                                                                                PokemonSpecies.INSTANCE.getSpecies().forEach(species -> {
-                                                                                    Pokemon temp = new Pokemon();
-                                                                                    temp.setSpecies(species);
-                                                                                    AtomicBoolean pass = new AtomicBoolean(true);
-                                                                                    speciesBlacklist.forEach(blacklistSpecies -> {
-                                                                                        if (blacklistSpecies.equals(species)) {
-                                                                                            pass.set(false);
-                                                                                        }
-                                                                                    });
-                                                                                    if (pass.get()) {
-                                                                                        builder.suggest(species.getName().toLowerCase());
-                                                                                    }
-                                                                                });
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::disableSpecies)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("biome")
-                                                            .then(
-                                                                    CommandManager.argument("biome", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.biome", 4))
-                                                                            .suggests((context, builder)-> {
-                                                                                for (Biome biome : registeredBiomes) {
-                                                                                    if (!biomeBlacklist.contains(biome)) {
-                                                                                        mcServer.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> {
-                                                                                            builder.suggest("\"" + key.getValue().getNamespace() + ":" + key.getValue().getPath() + "\"");
-                                                                                        });
-                                                                                    }
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::disableBiome)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("world")
-                                                            .then(
-                                                                    CommandManager.argument("world", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.world", 4))
-                                                                            .suggests(((context, builder) -> {
-                                                                                mcServer.getWorlds().forEach(world -> builder.suggest("\"" + world.getRegistryKey().getValue().getNamespace() + ":" + world.getRegistryKey().getValue().getPath() + "\""));
-                                                                                return builder.buildFuture();
-                                                                            }))
-                                                                            .executes(this::disableWorld)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("generation")
-                                                            .then(
-                                                                    CommandManager.argument("label", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.generation", 4))
-                                                                            .suggests((ctx, builder) -> {
-                                                                                for (String generation : generations) {
-                                                                                    builder.suggest(generation);
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::disableLabel)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("form")
-                                                            .then(
-                                                                    CommandManager.argument("label", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.form", 4))
-                                                                            .suggests((ctx, builder) -> {
-                                                                                for (String form : forms) {
-                                                                                    builder.suggest(form);
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::disableLabel)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("group")
-                                                            .then(
-                                                                    CommandManager.argument("label", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.group", 4))
-                                                                            .suggests((ctx, builder) -> {
-                                                                                for (String group : groups) {
-                                                                                    builder.suggest(group);
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::disableLabel)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("customlabel")
-                                                        .then(
-                                                                CommandManager.argument("label", StringArgumentType.string())
-                                                                        .requires(Permissions.require("spawncontroller.customlabel", 4))
-                                                                        .executes(this::disableLabel)
-                                                        )
-                                            )
-                            )
-                            .then(
-                                    CommandManager.literal("enable")
-                                            .then(
-                                                    CommandManager.literal("species")
-                                                            .then(
-                                                                    CommandManager.argument("species", SpeciesArgumentType.Companion.species())
-                                                                            .requires(Permissions.require("spawncontroller.species", 4))
-                                                                            .suggests((context, builder) -> {
-                                                                                speciesBlacklist.forEach(species -> builder.suggest(species.getName().toLowerCase()));
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::enableSpecies)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("biome")
-                                                            .then(
-                                                                    CommandManager.argument("biome", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.biome", 4))
-                                                                            .suggests((context, builder)-> {
-                                                                                for (Biome biome : biomeBlacklist) {
-                                                                                    mcServer.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key ->{
-                                                                                        builder.suggest("\"" + key.getValue().getNamespace() + ":" + key.getValue().getPath() + "\"");
-                                                                                    });
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::enableBiome)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("world")
-                                                            .then(
-                                                                    CommandManager.argument("world", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.world", 4))
-                                                                            .suggests(((context, builder) -> {
-                                                                                worldBlacklist.forEach(world -> builder.suggest("\"" + world.getRegistryKey().getValue().getNamespace() + ":" + world.getRegistryKey().getValue().getPath() + "\""));
-                                                                                return builder.buildFuture();
-                                                                            }))
-                                                                            .executes(this::enableWorld)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("generation")
-                                                            .then(
-                                                                    CommandManager.argument("label", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.generation", 4))
-                                                                            .suggests((ctx, builder) -> {
-                                                                                for (String generation : generations) {
-                                                                                    if (labelBlacklist.contains(generation)) {
-                                                                                        builder.suggest(generation);
-                                                                                    }
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::enableLabel)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("form")
-                                                            .then(
-                                                                    CommandManager.argument("label", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.form", 4))
-                                                                            .suggests((ctx, builder) -> {
-                                                                                for (String form : forms) {
-                                                                                    if (labelBlacklist.contains(form)) {
-                                                                                        builder.suggest(form);
-                                                                                    }
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::enableLabel)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("group")
-                                                            .then(
-                                                                    CommandManager.argument("label", StringArgumentType.string())
-                                                                            .requires(Permissions.require("spawncontroller.group", 4))
-                                                                            .suggests((ctx, builder) -> {
-                                                                                for (String group : groups) {
-                                                                                    if (labelBlacklist.contains(group)) {
-                                                                                        builder.suggest(group);
-                                                                                    }
-                                                                                }
-                                                                                return builder.buildFuture();
-                                                                            })
-                                                                            .executes(this::enableLabel)
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("customlabel")
-                                                    .then(
-                                                            CommandManager.argument("label", StringArgumentType.string())
-                                                                    .requires(Permissions.require("spawncontroller.customlabel", 4))
-                                                                    .executes(this::enableLabel)
-                                                    )
-                                            )
-                            )
-                            .then(
-                                    CommandManager.literal("bucket")
-                                            .requires(Permissions.require("spawncontroller.bucket", 4))
-                                            .executes(ctx -> {
-                                                for (SpawnBucket bucket : BestSpawner.INSTANCE.getConfig().getBuckets()) {
-                                                    ctx.getSource().sendMessage(Text.literal(bucket.getName() + ": " + bucket.getWeight()));
-                                                }
-                                                return 1;
-                                            })
-                                            .then(
-                                                    CommandManager.literal("common")
-                                                            .then(
-                                                                    CommandManager.argument("weight", FloatArgumentType.floatArg(0.001F))
-                                                                            .executes(ctx -> {
-                                                                                List<SpawnBucket> buckets = new ArrayList<>(BestSpawner.INSTANCE.getConfig().getBuckets());
-                                                                                buckets.set(0, new SpawnBucket("common", FloatArgumentType.getFloat(ctx, "weight")));
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().clear();
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().addAll(buckets);
-                                                                                ctx.getSource().sendMessage(Text.literal("Updated common bucket."));
-                                                                                return 1;
-                                                                            })
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("uncommon")
-                                                            .then(
-                                                                    CommandManager.argument("weight", FloatArgumentType.floatArg(0.001F))
-                                                                            .executes(ctx -> {
-                                                                                List<SpawnBucket> buckets = new ArrayList<>(BestSpawner.INSTANCE.getConfig().getBuckets());
-                                                                                buckets.set(1, new SpawnBucket("uncommon", FloatArgumentType.getFloat(ctx, "weight")));
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().clear();
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().addAll(buckets);
-                                                                                ctx.getSource().sendMessage(Text.literal("Updated uncommon bucket."));
-                                                                                return 1;
-                                                                            })
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("rare")
-                                                            .then(
-                                                                    CommandManager.argument("weight", FloatArgumentType.floatArg(0.001F))
-                                                                            .executes(ctx -> {
-                                                                                List<SpawnBucket> buckets = new ArrayList<>(BestSpawner.INSTANCE.getConfig().getBuckets());
-                                                                                buckets.set(2, new SpawnBucket("rare", FloatArgumentType.getFloat(ctx, "weight")));
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().clear();
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().addAll(buckets);
-                                                                                ctx.getSource().sendMessage(Text.literal("Updated rare bucket."));
-                                                                                return 1;
-                                                                            })
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("ultra-rare")
-                                                            .then(
-                                                                    CommandManager.argument("weight", FloatArgumentType.floatArg(0.001F))
-                                                                            .executes(ctx -> {
-                                                                                List<SpawnBucket> buckets = new ArrayList<>(BestSpawner.INSTANCE.getConfig().getBuckets());
-                                                                                buckets.set(3, new SpawnBucket("ultra-rare", FloatArgumentType.getFloat(ctx, "weight")));
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().clear();
-                                                                                BestSpawner.INSTANCE.getConfig().getBuckets().addAll(buckets);
-                                                                                ctx.getSource().sendMessage(Text.literal("Updated ultra-rare bucket."));
-                                                                                return 1;
-                                                                            })
-                                                            )
-                                            )
-                                            .then(
-                                                    CommandManager.literal("reset")
-                                                            .executes(ctx -> {
-                                                                BestSpawner.INSTANCE.getConfig().getBuckets().addAll(List.of(
-                                                                        new SpawnBucket("common", 93.8F),
-                                                                        new SpawnBucket("uncommon", 5F),
-                                                                        new SpawnBucket("rare", 1.0F),
-                                                                        new SpawnBucket("ultra-rare", 0.2F)
-                                                                ));
-                                                                ctx.getSource().sendMessage(Text.literal("Buckets reset."));
-                                                                return 1;
-                                                            })
-                                            )
-                            )
                             .then(
                                     CommandManager.literal("spawn-info")
                                             .requires(Permissions.require("spawncontroller.spawninfo", 4))
@@ -1954,23 +1681,14 @@ public class SpawnController implements ModInitializer {
                                                             )
                                             )
                             )
-                            .then(
-                                    CommandManager.literal("reload")
-                                            .requires(Permissions.require("spawncontroller.reload", 4))
-                                            .executes(ctx -> {
-                                                config = new Config();
-                                                ctx.getSource().sendMessage(Text.literal("Config reloaded!"));
-                                                return 1;
-                                            })
-                            )
             );
         });
 
         ServerLifecycleEvents.SERVER_STARTED.register((server) -> {
-            instance = this;
-            mcServer = server;
+            INSTANCE = this;
+            this.server = server;
 
-            for (ServerWorld world : SpawnController.instance.mcServer.getWorlds()) {
+            for (ServerWorld world : server.getWorlds()) {
                 registeredBiomes.addAll(world.getRegistryManager().get(RegistryKeys.BIOME).stream().toList());
             }
 
@@ -2002,8 +1720,20 @@ public class SpawnController implements ModInitializer {
                     }
                 }
 
-                for (String label : labelBlacklist) {
-                    if (pokemon.getSpecies().getLabels().contains(label)) {
+                for (String label : generationBlacklist) {
+                    if (pokemon.getForm().getLabels().contains(label)) {
+                        event.cancel();
+                    }
+                }
+
+                for (String label : formBlacklist) {
+                    if (pokemon.getForm().getLabels().contains(label)) {
+                        event.cancel();
+                    }
+                }
+
+                for (String label : groupBlacklist) {
+                    if (pokemon.getForm().getLabels().contains(label)) {
                         event.cancel();
                     }
                 }
@@ -2011,6 +1741,10 @@ public class SpawnController implements ModInitializer {
                 return Unit.INSTANCE;
             });
         });
+    }
+
+    public void reload() {
+        this.config = new Config();
     }
 
     private static @Nullable Boolean getBoolOrNull(String bool) {
@@ -2048,7 +1782,7 @@ public class SpawnController implements ModInitializer {
         }
         CobblemonSpawnPools.WORLD_SPAWN_POOL.getDetails().set(index, detail);
         CobblemonSpawnPools.WORLD_SPAWN_POOL.precalculate();
-        for (ServerPlayerEntity player : mcServer.getPlayerManager().getPlayerList()) {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             CobblemonSpawnPools.WORLD_SPAWN_POOL.sync(player);
         }
     }
@@ -2170,9 +1904,9 @@ public class SpawnController implements ModInitializer {
         if (condition.getBiomes() != null) {
             source.sendMessage(Text.literal(" - Biomes:"));
             for (RegistryLikeCondition<Biome> biome : condition.getBiomes()) {
-                for (Biome biomeKey : mcServer.getRegistryManager().get(RegistryKeys.BIOME).stream().toList()) {
-                    if (biome.fits(biomeKey, mcServer.getRegistryManager().get(RegistryKeys.BIOME))) {
-                        source.sendMessage(Text.literal(" -- " + mcServer.getRegistryManager().get(RegistryKeys.BIOME).getEntry(biomeKey).getIdAsString()));
+                for (Biome biomeKey : server.getRegistryManager().get(RegistryKeys.BIOME).stream().toList()) {
+                    if (biome.fits(biomeKey, server.getRegistryManager().get(RegistryKeys.BIOME))) {
+                        source.sendMessage(Text.literal(" -- " + server.getRegistryManager().get(RegistryKeys.BIOME).getEntry(biomeKey).getIdAsString()));
                     }
                 }
             }
@@ -2282,9 +2016,9 @@ public class SpawnController implements ModInitializer {
             }
 
             if (submergedCondition.getFluid() != null) {
-                for (Fluid key : mcServer.getRegistryManager().get(RegistryKeys.FLUID).stream().toList()) {
-                    if (submergedCondition.getFluid().fits(key, mcServer.getRegistryManager().get(RegistryKeys.FLUID))) {
-                        source.sendMessage(Text.literal(" - Submerged Fluid: " + mcServer.getRegistryManager().get(RegistryKeys.FLUID).getEntry(key).getIdAsString()));
+                for (Fluid key : server.getRegistryManager().get(RegistryKeys.FLUID).stream().toList()) {
+                    if (submergedCondition.getFluid().fits(key, server.getRegistryManager().get(RegistryKeys.FLUID))) {
+                        source.sendMessage(Text.literal(" - Submerged Fluid: " + server.getRegistryManager().get(RegistryKeys.FLUID).getEntry(key).getIdAsString()));
                     }
                 }
             }
@@ -2300,9 +2034,9 @@ public class SpawnController implements ModInitializer {
             }
 
             if (surfaceCondition.getFluid() != null) {
-                for (Fluid key : mcServer.getRegistryManager().get(RegistryKeys.FLUID).stream().toList()) {
-                    if (surfaceCondition.getFluid().fits(key, mcServer.getRegistryManager().get(RegistryKeys.FLUID))) {
-                        source.sendMessage(Text.literal(" - Submerged Fluid: " + mcServer.getRegistryManager().get(RegistryKeys.FLUID).getEntry(key).getIdAsString()));
+                for (Fluid key : server.getRegistryManager().get(RegistryKeys.FLUID).stream().toList()) {
+                    if (surfaceCondition.getFluid().fits(key, server.getRegistryManager().get(RegistryKeys.FLUID))) {
+                        source.sendMessage(Text.literal(" - Submerged Fluid: " + server.getRegistryManager().get(RegistryKeys.FLUID).getEntry(key).getIdAsString()));
                     }
                 }
             }
@@ -2324,9 +2058,9 @@ public class SpawnController implements ModInitializer {
 
         if (condition instanceof FishingSpawningCondition fishingCondition) {
             if (fishingCondition.getRod() != null) {
-                for (Item key : mcServer.getRegistryManager().get(RegistryKeys.ITEM).stream().toList()) {
-                    if (fishingCondition.getRod().fits(key, mcServer.getRegistryManager().get(RegistryKeys.ITEM))) {
-                        source.sendMessage(Text.literal(" - Rod: " + mcServer.getRegistryManager().get(RegistryKeys.ITEM).getEntry(key).getIdAsString()));
+                for (Item key : server.getRegistryManager().get(RegistryKeys.ITEM).stream().toList()) {
+                    if (fishingCondition.getRod().fits(key, server.getRegistryManager().get(RegistryKeys.ITEM))) {
+                        source.sendMessage(Text.literal(" - Rod: " + server.getRegistryManager().get(RegistryKeys.ITEM).getEntry(key).getIdAsString()));
                     }
                 }
             }
@@ -2361,154 +2095,7 @@ public class SpawnController implements ModInitializer {
         }
     }
 
-    public int enableSpecies(CommandContext<ServerCommandSource> ctx) {
-        Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
-        ArrayList<Species> toKeep = new ArrayList<>();
-        for (Species speciesIndex : speciesBlacklist) {
-            if (!speciesIndex.equals(species)) {
-                toKeep.add(speciesIndex);
-            }
-        }
-
-        if (toKeep.size() == speciesBlacklist.size()) {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for species: " + species.getName().toLowerCase() + "!"));
-            return 0;
-        }
-
-        speciesBlacklist.clear();
-        speciesBlacklist.addAll(toKeep);
-        config.updateBlacklist();
-        ctx.getSource().sendMessage(Text.literal("Enabled spawns for species: " + species.getName().toLowerCase() + "!"));
-        return 1;
-    }
-
-    public int enableBiome(CommandContext<ServerCommandSource> ctx) {
-        String biomeString = StringArgumentType.getString(ctx, "biome");
-        ArrayList<Biome> toKeep = new ArrayList<>();
-        for (Biome biome : biomeBlacklist) {
-            mcServer.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key ->{
-                if (!((key.getValue().getNamespace() + ":" + key.getValue().getPath()).equalsIgnoreCase(biomeString))) {
-                    toKeep.add(biome);
-                }
-            });
-        }
-
-        if (toKeep.size() == biomeBlacklist.size()) {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for biome: " + biomeString + "!"));
-            return 0;
-        }
-
-        biomeBlacklist.clear();
-        biomeBlacklist.addAll(toKeep);
-        config.updateBlacklist();
-        ctx.getSource().sendMessage(Text.literal("Enabled spawns for biome: " + biomeString + "!"));
-        return 1;
-    }
-
-    public int enableWorld(CommandContext<ServerCommandSource> ctx) {
-        String worldString = StringArgumentType.getString(ctx, "world");
-        ArrayList<ServerWorld> toKeep = new ArrayList<>();
-        for (ServerWorld world : worldBlacklist) {
-            if (!(world.getRegistryKey().getValue().getNamespace() + ":" + world.getRegistryKey().getValue().getPath()).equalsIgnoreCase(worldString)) {
-                toKeep.add(world);
-            }
-        }
-        if (toKeep.size() == worldBlacklist.size()) {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for world: " + worldString + "!"));
-            return 0;
-        }
-        worldBlacklist.clear();
-        worldBlacklist.addAll(toKeep);
-        config.updateBlacklist();
-        ctx.getSource().sendMessage(Text.literal("Enabled spawns for world: " + worldString + "!"));
-        return 1;
-    }
-
-    public int enableLabel(CommandContext<ServerCommandSource> ctx) {
-        String labelString = StringArgumentType.getString(ctx, "label");
-        ArrayList<String> toKeep = new ArrayList<>();
-        for (String label : labelBlacklist) {
-            if (!label.equalsIgnoreCase(labelString)) {
-                toKeep.add(label);
-            }
-        }
-        if (toKeep.size() == labelBlacklist.size()) {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for label: " + labelString + "!"));
-            return 0;
-        }
-        labelBlacklist.clear();
-        labelBlacklist.addAll(toKeep);
-        config.updateBlacklist();
-        ctx.getSource().sendMessage(Text.literal("Enabled spawns for label: " + labelString + "!"));
-        return 1;
-    }
-
-    public int disableSpecies(CommandContext<ServerCommandSource> ctx) {
-        Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
-        if (addToBlacklist(species)) {
-            ctx.getSource().sendMessage(Text.literal("Disabled spawns for species: " + species.getName().toLowerCase() + "!"));
-            config.updateBlacklist();
-            return 1;
-        } else {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already disabled for species: " + species.getName().toLowerCase() + "!"));
-            return 0;
-        }
-    }
-
-    public int disableBiome(CommandContext<ServerCommandSource> ctx) {
-        String biomeString = StringArgumentType.getString(ctx, "biome");
-
-        for (Biome biome : getBiomeList()) {
-            AtomicReference<RegistryKey<Biome>> key = new AtomicReference<>();
-            mcServer.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key::set);
-            if ((key.get().getValue().getNamespace() + ":" + key.get().getValue().getPath()).equalsIgnoreCase(biomeString)) {
-                if (addToBlacklist(biome)) {
-                    ctx.getSource().sendMessage(Text.literal("Disabled spawns in biome " + biomeString + "!"));
-                    config.updateBlacklist();
-                    return 1;
-                } else {
-                    ctx.getSource().sendMessage(Text.literal("Spawn is already disabled in biome " + biomeString + "!"));
-                    return 0;
-                }
-            }
-        }
-
-        ctx.getSource().sendMessage(Text.literal("Could not find that biome!"));
-        return 0;
-    }
-
-    public int disableWorld(CommandContext<ServerCommandSource> ctx) {
-        String worldString = StringArgumentType.getString(ctx, "world");
-        for (ServerWorld world : mcServer.getWorlds()) {
-            if ((world.getRegistryKey().getValue().getNamespace() + ":" + world.getRegistryKey().getValue().getPath()).equalsIgnoreCase(worldString)) {
-                if (addToBlacklist(world)) {
-                    ctx.getSource().sendMessage(Text.literal("Disabled spawns in world " + worldString + "!"));
-                    config.updateBlacklist();
-                    return 1;
-                } else {
-                    ctx.getSource().sendMessage(Text.literal("Spawn is already disabled in world " + worldString + "!"));
-                    return 0;
-                }
-            }
-        }
-
-        ctx.getSource().sendMessage(Text.literal("Could not find that world!"));
-        return 0;
-    }
-
-    public int disableLabel(CommandContext<ServerCommandSource> ctx) {
-        String labelString = StringArgumentType.getString(ctx, "label");
-        if (addToBlacklist(labelString)) {
-            ctx.getSource().sendMessage(Text.literal("Disabled spawns for label: " + labelString + "!"));
-            config.updateBlacklist();
-            return 1;
-        } else {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already disabled for label: " + labelString + "!"));
-            return 0;
-        }
-    }
-
-    public boolean addToBlacklist(Species species) {
+    public boolean blacklistAdd(Species species) {
         for (Species existingSpecies : speciesBlacklist) {
             if (existingSpecies.equals(species)) {
                 return false;
@@ -2518,7 +2105,17 @@ public class SpawnController implements ModInitializer {
         return true;
     }
 
-    public boolean addToBlacklist(ServerWorld world) {
+    public boolean whitelistAdd(Species species) {
+        for (Species existingSpecies : speciesWhitelist) {
+            if (existingSpecies.equals(species)) {
+                return false;
+            }
+        }
+        speciesWhitelist.add(species);
+        return true;
+    }
+
+    public boolean blacklistAdd(ServerWorld world) {
         for (ServerWorld existingWorld : worldBlacklist) {
             if (existingWorld.equals(world)) {
                 return false;
@@ -2528,7 +2125,17 @@ public class SpawnController implements ModInitializer {
         return true;
     }
 
-    public boolean addToBlacklist(Biome biome) {
+    public boolean whitelistAdd(ServerWorld world) {
+        for (ServerWorld existingWorld : worldWhitelist) {
+            if (existingWorld.equals(world)) {
+                return false;
+            }
+        }
+        worldWhitelist.add(world);
+        return true;
+    }
+
+    public boolean blacklistAdd(Biome biome) {
         for (Biome existingBiome : biomeBlacklist) {
             if (existingBiome.equals(biome)) {
                 return false;
@@ -2538,34 +2145,188 @@ public class SpawnController implements ModInitializer {
         return true;
     }
 
-    public boolean addToBlacklist(String label) {
-        for (String existingLabel : labelBlacklist) {
+    public boolean whitelistAdd(Biome biome) {
+        for (Biome existingBiome : biomeWhitelist) {
+            if (existingBiome.equals(biome)) {
+                return false;
+            }
+        }
+        biomeWhitelist.add(biome);
+        return true;
+    }
+
+    public boolean blacklistAdd(String label, String type) {
+        ArrayList<String> loopLabels = new ArrayList<>();
+        if (type.equalsIgnoreCase("generation")) {
+            loopLabels.addAll(generationBlacklist);
+        } else if (type.equalsIgnoreCase("form")) {
+            loopLabels.addAll(formBlacklist);
+        } else if (type.equalsIgnoreCase("group")) {
+            loopLabels.addAll(groupBlacklist);
+        } else if (type.equalsIgnoreCase("label")) {
+            loopLabels.addAll(customLabelBlacklist);
+        }
+
+        for (String existingLabel : loopLabels) {
             if (existingLabel.equalsIgnoreCase(label)) {
                 return false;
             }
         }
-        labelBlacklist.add(label);
+
+        if (type.equalsIgnoreCase("generation")) {
+            generationBlacklist.add(label);
+        } else if (type.equalsIgnoreCase("form")) {
+            formBlacklist.add(label);
+        } else if (type.equalsIgnoreCase("group")) {
+            groupBlacklist.add(label);
+        } else if (type.equalsIgnoreCase("label")) {
+            customLabelBlacklist.add(label);
+        }
+
         return true;
     }
 
-    public ArrayList<Species> getSpeciesBlacklist() {
+    public boolean whitelistAdd(String label, String type) {
+        ArrayList<String> loopLabels = new ArrayList<>();
+        if (type.equalsIgnoreCase("generation")) {
+            loopLabels.addAll(generationWhitelist);
+        } else if (type.equalsIgnoreCase("form")) {
+            loopLabels.addAll(formWhitelist);
+        } else if (type.equalsIgnoreCase("group")) {
+            loopLabels.addAll(groupWhitelist);
+        } else if (type.equalsIgnoreCase("label")) {
+            loopLabels.addAll(customLabelWhitelist);
+        }
+
+        for (String existingLabel : loopLabels) {
+            if (existingLabel.equalsIgnoreCase(label)) {
+                return false;
+            }
+        }
+
+        if (type.equalsIgnoreCase("generation")) {
+            generationWhitelist.add(label);
+        } else if (type.equalsIgnoreCase("form")) {
+            formWhitelist.add(label);
+        } else if (type.equalsIgnoreCase("group")) {
+            groupWhitelist.add(label);
+        } else if (type.equalsIgnoreCase("label")) {
+            customLabelWhitelist.add(label);
+        }
+
+        return true;
+    }
+
+    public List<Species> getSpeciesBlacklist() {
         return speciesBlacklist;
     }
 
-    public ArrayList<ServerWorld> getWorldBlacklist() {
+    public void clearSpeciesBlacklist() {
+        speciesBlacklist.clear();
+    }
+
+    public List<Species> getSpeciesWhitelist() {
+        return speciesWhitelist;
+    }
+
+    public void clearSpeciesWhitelist() {
+        speciesWhitelist.clear();
+    }
+
+    public List<ServerWorld> getWorldBlacklist() {
         return worldBlacklist;
     }
 
-    public ArrayList<Biome> getBiomeBlacklist() {
+    public void clearWorldBlacklist() {
+        worldBlacklist.clear();
+    }
+
+    public List<ServerWorld> getWorldWhitelist() {
+        return worldWhitelist;
+    }
+
+    public void clearWorldWhitelist() {
+        worldWhitelist.clear();
+    }
+
+    public List<Biome> getBiomeBlacklist() {
         return biomeBlacklist;
     }
 
-    public List<Biome> getBiomeList() {
-        return registeredBiomes;
+    public void clearBiomeBlacklist() {
+        biomeBlacklist.clear();
     }
 
-    public ArrayList<String> getLabelBlacklist() {
-        return labelBlacklist;
+    public List<Biome> getBiomeWhitelist() {
+        return biomeWhitelist;
+    }
+
+    public void clearBiomeWhitelist() {
+        biomeWhitelist.clear();
+    }
+
+    public List<String> getGenerationBlacklist() {
+        return generationBlacklist;
+    }
+
+    public void clearGenerationBlacklist() {
+        generationBlacklist.clear();
+    }
+
+    public List<String> getGenerationWhitelist() {
+        return generationWhitelist;
+    }
+
+    public void clearGenerationWhitelist() {
+        generationWhitelist.clear();
+    }
+
+    public List<String> getFormBlacklist() {
+        return formBlacklist;
+    }
+
+    public void clearFormBlacklist() {
+        formBlacklist.clear();
+    }
+
+    public List<String> getFormWhitelist() {
+        return formWhitelist;
+    }
+
+    public void clearFormWhitelist() {
+        formWhitelist.clear();
+    }
+
+    public List<String> getGroupBlacklist() {
+        return groupBlacklist;
+    }
+
+    public void clearGroupBlacklist() {
+        groupBlacklist.clear();
+    }
+
+    public List<String> getGroupWhitelist() {
+        return groupWhitelist;
+    }
+
+    public void clearGroupWhitelist() {
+        groupWhitelist.clear();
+    }
+
+    public List<String> getCustomLabelBlacklist() {
+        return customLabelBlacklist;
+    }
+
+    public void clearCustomLabelBlacklist() {
+        customLabelBlacklist.clear();
+    }
+
+    public List<String> getCustomLabelWhitelist() {
+        return customLabelWhitelist;
+    }
+
+    public void clearCustomLabelWhitelist() {
+        customLabelWhitelist.clear();
     }
 
     public List<String> getGenerations() {
@@ -2578,5 +2339,9 @@ public class SpawnController implements ModInitializer {
 
     public List<String> getGroups() {
         return groups;
+    }
+
+    public List<Biome> getRegisteredBiomes() {
+        return registeredBiomes;
     }
 }
