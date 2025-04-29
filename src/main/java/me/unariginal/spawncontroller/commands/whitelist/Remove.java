@@ -28,7 +28,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                                 CommandManager.argument("species", SpeciesArgumentType.Companion.species())
                                         .requires(Permissions.require("spawncontroller.species", 4))
                                         .suggests((context, builder) -> {
-                                            sc.getSpeciesWhitelist().forEach(species -> builder.suggest(species.getName().toLowerCase()));
+                                            sc.getSpeciesWhitelist().forEach(species -> builder.suggest(species.showdownId().toLowerCase()));
                                             return builder.buildFuture();
                                         })
                                         .executes(this::unWhitelistSpecies)
@@ -130,7 +130,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         }
 
         if (toKeep.size() == sc.getSpeciesWhitelist().size()) {
-            ctx.getSource().sendMessage(Text.literal(species.getName().toLowerCase() + " is not whitelisted!"));
+            ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " is not whitelisted!"));
             return 0;
         }
 
@@ -140,7 +140,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
             sc.whitelistAdd(label);
         }
         sc.config.updateWhitelist();
-        ctx.getSource().sendMessage(Text.literal(species.getName().toLowerCase() + " has been removed from the whitelist!"));
+        ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " has been removed from the whitelist!"));
         return 1;
     }
 

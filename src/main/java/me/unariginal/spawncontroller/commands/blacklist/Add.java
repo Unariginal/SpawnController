@@ -42,7 +42,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                                                 });
 
                                                 if (pass.get()) {
-                                                    builder.suggest(species.getName().toLowerCase());
+                                                    builder.suggest(species.showdownId().toLowerCase());
                                                 }
                                             });
 
@@ -136,11 +136,11 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
     public int disableSpecies(CommandContext<ServerCommandSource> ctx) {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
         if (sc.blacklistAdd(species)) {
-            ctx.getSource().sendMessage(Text.literal("Disabled spawns for species: " + species.getName().toLowerCase() + "!"));
+            ctx.getSource().sendMessage(Text.literal("Disabled spawns for species: " + species.showdownId().toLowerCase() + "!"));
             sc.config.updateBlacklist();
             return 1;
         } else {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already disabled for species: " + species.getName().toLowerCase() + "!"));
+            ctx.getSource().sendMessage(Text.literal("Spawn is already disabled for species: " + species.showdownId().toLowerCase() + "!"));
             return 0;
         }
     }

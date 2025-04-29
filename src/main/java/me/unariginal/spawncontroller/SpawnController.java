@@ -9,9 +9,11 @@ import com.cobblemon.mod.common.api.spawning.*;
 import com.cobblemon.mod.common.api.spawning.condition.*;
 import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail;
 import com.cobblemon.mod.common.api.spawning.detail.SpawnDetail;
+import com.cobblemon.mod.common.api.spawning.detail.SpawnPool;
 import com.cobblemon.mod.common.api.spawning.multiplier.WeightMultiplier;
 import com.cobblemon.mod.common.command.argument.SpawnBucketArgumentType;
 import com.cobblemon.mod.common.command.argument.SpeciesArgumentType;
+import com.cobblemon.mod.common.data.CobblemonDataProvider;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
@@ -1758,6 +1760,7 @@ public class SpawnController implements ModInitializer {
             }
             index++;
         }
+
         CobblemonSpawnPools.WORLD_SPAWN_POOL.getDetails().set(index, detail);
         CobblemonSpawnPools.WORLD_SPAWN_POOL.precalculate();
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {

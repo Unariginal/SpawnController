@@ -28,7 +28,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                                 CommandManager.argument("species", SpeciesArgumentType.Companion.species())
                                         .requires(Permissions.require("spawncontroller.species", 4))
                                         .suggests((context, builder) -> {
-                                            sc.getSpeciesBlacklist().forEach(species -> builder.suggest(species.getName().toLowerCase()));
+                                            sc.getSpeciesBlacklist().forEach(species -> builder.suggest(species.showdownId().toLowerCase()));
                                             return builder.buildFuture();
                                         })
                                         .executes(this::enableSpecies)
@@ -130,7 +130,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         }
 
         if (toKeep.size() == sc.getSpeciesBlacklist().size()) {
-            ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for species: " + species.getName().toLowerCase() + "!"));
+            ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for species: " + species.showdownId().toLowerCase() + "!"));
             return 0;
         }
 
@@ -140,7 +140,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
             sc.blacklistAdd(label);
         }
         sc.config.updateBlacklist();
-        ctx.getSource().sendMessage(Text.literal("Enabled spawns for species: " + species.getName().toLowerCase() + "!"));
+        ctx.getSource().sendMessage(Text.literal("Enabled spawns for species: " + species.showdownId().toLowerCase() + "!"));
         return 1;
     }
 

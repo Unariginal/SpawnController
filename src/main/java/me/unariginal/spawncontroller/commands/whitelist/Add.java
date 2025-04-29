@@ -42,7 +42,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                                                 });
 
                                                 if (pass.get()) {
-                                                    builder.suggest(species.getName().toLowerCase());
+                                                    builder.suggest(species.showdownId().toLowerCase());
                                                 }
                                             });
 
@@ -136,11 +136,11 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
     public int whitelistSpecies(CommandContext<ServerCommandSource> ctx) {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
         if (sc.whitelistAdd(species)) {
-            ctx.getSource().sendMessage(Text.literal(species.getName().toLowerCase() + " has been whitelisted!"));
+            ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " has been whitelisted!"));
             sc.config.updateWhitelist();
             return 1;
         } else {
-            ctx.getSource().sendMessage(Text.literal(species.getName().toLowerCase() + " is already whitelisted!"));
+            ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " is already whitelisted!"));
             return 0;
         }
     }

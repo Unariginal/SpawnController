@@ -51,7 +51,7 @@ public class SpawnInfo extends LiteralArgumentBuilder<ServerCommandSource> {
         then(
                 CommandManager.argument("pokemon", SpeciesArgumentType.Companion.species())
                         .suggests((context, builder) -> {
-                            PokemonSpecies.INSTANCE.getSpecies().forEach(species -> builder.suggest(species.getName().toLowerCase()));
+                            PokemonSpecies.INSTANCE.getSpecies().forEach(species -> builder.suggest(species.showdownId().toLowerCase()));
                             return builder.buildFuture();
                         })
                         .executes(this::spawnDetails)
@@ -85,8 +85,10 @@ public class SpawnInfo extends LiteralArgumentBuilder<ServerCommandSource> {
             List<SpawnDetail> spawnDetails = new ArrayList<>();
 
             for (SpawnDetail spawnDetail : worldSpawnPoolDetails) {
-                if (spawnDetail.getId().toLowerCase().contains(species.getName().toLowerCase())) {
-                    spawnDetails.add(spawnDetail);
+                if (!spawnDetail.getId().isEmpty() && spawnDetail.getId().contains("-")) {
+                    if (spawnDetail.getId().toLowerCase().substring(0, spawnDetail.getId().toLowerCase().indexOf("-")).equalsIgnoreCase(species.showdownId().toLowerCase())) {
+                        spawnDetails.add(spawnDetail);
+                    }
                 }
             }
 
