@@ -2,9 +2,9 @@ package me.unariginal.spawncontroller.commands.modifypool;
 
 import com.cobblemon.mod.common.api.spawning.MoonPhaseRange;
 import com.cobblemon.mod.common.api.spawning.TimeRange;
-import com.cobblemon.mod.common.api.spawning.condition.SpawningCondition;
-import com.cobblemon.mod.common.api.spawning.condition.SubmergedSpawningCondition;
+import com.cobblemon.mod.common.api.spawning.condition.*;
 import com.cobblemon.mod.common.api.spawning.detail.SpawnDetail;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -157,16 +157,16 @@ public class Condition extends LiteralArgumentBuilder<ServerCommandSource> {
                                             if (literal.equalsIgnoreCase("condition")) {
                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
                                                 for (SpawningCondition<?> condition : conditions) {
-                                                    if (condition instanceof SubmergedSpawningCondition submergedSpawningCondition) {
-                                                        submergedSpawningCondition.setFluidIsSource(bool);
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setFluidIsSource(bool);
                                                     }
                                                 }
                                                 detail.setConditions(conditions);
                                             } else if (literal.equalsIgnoreCase("anticondition")) {
                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
                                                 for (SpawningCondition<?> condition : conditions) {
-                                                    if (condition instanceof SubmergedSpawningCondition submergedSpawningCondition) {
-                                                        submergedSpawningCondition.setFluidIsSource(bool);
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setFluidIsSource(bool);
                                                     }
                                                 }
                                                 detail.setAnticonditions(conditions);
@@ -454,6 +454,798 @@ public class Condition extends LiteralArgumentBuilder<ServerCommandSource> {
                                                 List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
                                                 for (SpawningCondition<?> condition : conditions) {
                                                     condition.setMaxSkyLight(null);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minHeight")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMinHeight(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxHeight")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof AreaTypeSpawningCondition<?>) {
+                                                        ((AreaTypeSpawningCondition<?>) condition).setMaxHeight(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minLureLevel")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMinLureLevel(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMinLureLevel(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMinLureLevel(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMinLureLevel(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxLureLevel")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof FishingSpawningCondition) {
+                                                        ((FishingSpawningCondition) condition).setMaxLureLevel(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minDepthSurface")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMinDepth(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMinDepth(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMinDepth(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMinDepth(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxDepthSurface")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SurfaceSpawningCondition) {
+                                                        ((SurfaceSpawningCondition) condition).setMaxDepth(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minDepthSubmerged")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMinDepth(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMinDepth(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMinDepth(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMinDepth(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxDepthSubmerged")
+                        .then(
+                                CommandManager.argument("value", IntegerArgumentType.integer())
+                                        .executes(ctx -> {
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(value);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(value);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(null);
+                                                    }
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    if (condition instanceof SubmergedSpawningCondition) {
+                                                        ((SubmergedSpawningCondition) condition).setMaxDepth(null);
+                                                    }
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minX")
+                        .then(
+                                CommandManager.argument("value", FloatArgumentType.floatArg())
+                                        .executes(ctx -> {
+                                            float value = FloatArgumentType.getFloat(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinX(value);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinX(value);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinX(null);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinX(null);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxX")
+                        .then(
+                                CommandManager.argument("value", FloatArgumentType.floatArg())
+                                        .executes(ctx -> {
+                                            float value = FloatArgumentType.getFloat(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxX(value);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxX(value);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxX(null);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxX(null);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minY")
+                        .then(
+                                CommandManager.argument("value", FloatArgumentType.floatArg())
+                                        .executes(ctx -> {
+                                            float value = FloatArgumentType.getFloat(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinY(value);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinY(value);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinY(null);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinY(null);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxY")
+                        .then(
+                                CommandManager.argument("value", FloatArgumentType.floatArg())
+                                        .executes(ctx -> {
+                                            float value = FloatArgumentType.getFloat(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxY(value);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxY(value);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxY(null);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxY(null);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("minZ")
+                        .then(
+                                CommandManager.argument("value", FloatArgumentType.floatArg())
+                                        .executes(ctx -> {
+                                            float value = FloatArgumentType.getFloat(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinZ(value);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinZ(value);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinZ(null);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMinZ(null);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+        );
+        then(
+                CommandManager.literal("maxZ")
+                        .then(
+                                CommandManager.argument("value", FloatArgumentType.floatArg())
+                                        .executes(ctx -> {
+                                            float value = FloatArgumentType.getFloat(ctx, "value");
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxZ(value);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxZ(value);
+                                                }
+                                                detail.setAnticonditions(conditions);
+                                            }
+                                            SpawnerUtils.updateSpawnPool(ctx, detail);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                CommandManager.literal("null")
+                                        .executes(ctx -> {
+                                            SpawnDetail detail = SpawnerUtils.getSpawnDetail(ctx);
+                                            if (detail == null) {
+                                                return 0;
+                                            }
+                                            if (literal.equalsIgnoreCase("condition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getConditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxZ(null);
+                                                }
+                                                detail.setConditions(conditions);
+                                            } else if (literal.equalsIgnoreCase("anticondition")) {
+                                                List<SpawningCondition<?>> conditions = new ArrayList<>(detail.getAnticonditions());
+                                                for (SpawningCondition<?> condition : conditions) {
+                                                    condition.setMaxZ(null);
                                                 }
                                                 detail.setAnticonditions(conditions);
                                             }
