@@ -25,18 +25,18 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
 
     protected Add() {
         super("add");
-
+        requires(Permissions.require("spawncontroller.blacklist.add", 4));
         then(
                 CommandManager.literal("species")
                         .then(
                                 CommandManager.argument("species", SpeciesArgumentType.Companion.species())
-                                        .requires(Permissions.require("spawncontroller.species", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.species", 4))
                                         .suggests((context, builder) -> {
                                             PokemonSpecies.INSTANCE.getSpecies().forEach(species -> {
                                                 AtomicBoolean pass = new AtomicBoolean(true);
 
-                                                sc.getSpeciesBlacklist().forEach(blacklistSpecies -> {
-                                                    if (blacklistSpecies.equals(species)) {
+                                                BlacklistConfig.blacklist.species.forEach(blacklistSpecies -> {
+                                                    if (blacklistSpecies.equalsIgnoreCase(species.showdownId())) {
                                                         pass.set(false);
                                                     }
                                                 });
@@ -55,14 +55,13 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("biome")
                         .then(
                                 CommandManager.argument("biome", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.biome", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.biome", 4))
                                         .suggests((context, builder)-> {
                                             for (Biome biome : sc.getRegisteredBiomes()) {
-                                                if (!sc.getBiomeBlacklist().contains(biome)) {
-                                                    sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> {
+                                                sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> {
+                                                    if (!BlacklistConfig.blacklist.biomes.contains(key.getValue().toString()))
                                                         builder.suggest("\"" + key.getValue().toString() + "\"");
-                                                    });
-                                                }
+                                                });
                                             }
                                             return builder.buildFuture();
                                         })
@@ -73,7 +72,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("world")
                         .then(
                                 CommandManager.argument("world", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.world", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.world", 4))
                                         .suggests(((context, builder) -> {
                                             sc.server.getWorlds().forEach(world -> builder.suggest("\"" + world.getRegistryKey().getValue().toString() + "\""));
                                             return builder.buildFuture();
@@ -85,7 +84,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("generation")
                         .then(
                                 CommandManager.argument("generation", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.generation", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.generation", 4))
                                         .suggests((ctx, builder) -> {
                                             for (String generation : sc.getGenerations()) {
                                                 builder.suggest(generation);
@@ -99,7 +98,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("form")
                         .then(
                                 CommandManager.argument("form", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.form", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.form", 4))
                                         .suggests((ctx, builder) -> {
                                             for (String form : sc.getForms()) {
                                                 builder.suggest(form);
@@ -113,7 +112,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("group")
                         .then(
                                 CommandManager.argument("group", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.group", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.group", 4))
                                         .suggests((ctx, builder) -> {
                                             for (String group : sc.getGroups()) {
                                                 builder.suggest(group);
@@ -127,7 +126,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("customlabel")
                         .then(
                                 CommandManager.argument("label", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.customlabel", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.add.customlabel", 4))
                                         .executes(ctx -> disableLabel(ctx, "label"))
                         )
         );
@@ -135,7 +134,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int disableSpecies(CommandContext<ServerCommandSource> ctx) {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
-        if (sc.blacklistAdd(species)) {
+        if (sc.blacklistAddSpecies(species.showdownId().toLowerCase())) {
             ctx.getSource().sendMessage(Text.literal("Disabled spawns for species: " + species.showdownId().toLowerCase() + "!"));
             BlacklistConfig.save();
             return 1;
@@ -152,7 +151,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
             AtomicReference<RegistryKey<Biome>> key = new AtomicReference<>();
             sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key::set);
             if ((key.get().getValue().toString()).equalsIgnoreCase(biomeString)) {
-                if (sc.blacklistAdd(biome)) {
+                if (sc.blacklistAddBiome(biomeString)) {
                     ctx.getSource().sendMessage(Text.literal("Disabled spawns in biome " + biomeString + "!"));
                     BlacklistConfig.save();
                     return 1;
@@ -171,7 +170,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
         String worldString = StringArgumentType.getString(ctx, "world");
         for (ServerWorld world : sc.server.getWorlds()) {
             if ((world.getRegistryKey().getValue().toString()).equalsIgnoreCase(worldString)) {
-                if (sc.blacklistAdd(world)) {
+                if (sc.blacklistAddWorld(worldString)) {
                     ctx.getSource().sendMessage(Text.literal("Disabled spawns in world " + worldString + "!"));
                     BlacklistConfig.save();
                     return 1;

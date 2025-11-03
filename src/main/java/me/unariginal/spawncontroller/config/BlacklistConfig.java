@@ -19,6 +19,8 @@ public class BlacklistConfig {
 
     public static void load() throws IOException {
         File blacklistFile = FabricLoader.getInstance().getConfigDir().resolve("SpawnController/blacklist.json").toFile();
+        File rootFolder = FabricLoader.getInstance().getConfigDir().resolve("SpawnController").toFile();
+        if (!rootFolder.exists()) rootFolder.mkdirs();
         if (!blacklistFile.exists()) save();
         else blacklist = gson.fromJson(JsonParser.parseReader(new FileReader(blacklistFile)).toString(), ListData.class);
     }

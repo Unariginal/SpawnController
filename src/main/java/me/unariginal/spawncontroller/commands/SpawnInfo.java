@@ -102,7 +102,7 @@ public class SpawnInfo extends LiteralArgumentBuilder<ServerCommandSource> {
                 builder.setName(spawnDetail.getName().styled(style -> style.withItalic(false)));
                 builder.setLore(List.of(
                         Text.literal("ID: " + spawnDetail.getId()).styled(style -> style.withItalic(false)),
-                        Text.literal("Context: " + spawnDetail.getContext().getName()).styled(style -> style.withItalic(false)),
+                        Text.literal("Context: " + spawnDetail.getName()).styled(style -> style.withItalic(false)),
                         Text.literal("Weight: " + spawnDetail.getWeight()).styled(style -> style.withItalic(false)),
                         Text.literal("Bucket: " + spawnDetail.getBucket().getName()).styled(style -> style.withItalic(false)),
                         Text.empty(),
@@ -166,11 +166,11 @@ public class SpawnInfo extends LiteralArgumentBuilder<ServerCommandSource> {
                 .build());
 
         gui.setSlot(slot++, new GuiElementBuilder(Items.PAPER)
-                .setName(Text.literal("Context: " + detail.getContext().getName()))
+                .setName(Text.literal("Context: " + detail.getName()))
                 .build());
 
         gui.setSlot(slot++, new GuiElementBuilder(Items.PAPER)
-                .setName(Text.literal("Context Weight: " + detail.getContext().getWeight()))
+                .setName(Text.literal("Context Weight: " + detail.getWeight()))
                 .build());
 
         if (!detail.getWeightMultipliers().isEmpty()) {

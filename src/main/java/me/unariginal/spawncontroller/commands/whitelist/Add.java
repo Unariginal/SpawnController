@@ -25,18 +25,18 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
 
     protected Add() {
         super("add");
-
+        requires(Permissions.require("spawncontroller.whitelist.add", 4));
         then(
                 CommandManager.literal("species")
                         .then(
                                 CommandManager.argument("species", SpeciesArgumentType.Companion.species())
-                                        .requires(Permissions.require("spawncontroller.species", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.add.species", 4))
                                         .suggests((context, builder) -> {
                                             PokemonSpecies.INSTANCE.getSpecies().forEach(species -> {
                                                 AtomicBoolean pass = new AtomicBoolean(true);
 
-                                                sc.getSpeciesWhitelist().forEach(whitelistSpecies -> {
-                                                    if (whitelistSpecies.equals(species)) {
+                                                WhitelistConfig.whitelist.species.forEach(whitelistSpecies -> {
+                                                    if (whitelistSpecies.equalsIgnoreCase(species.showdownId())) {
                                                         pass.set(false);
                                                     }
                                                 });
@@ -55,14 +55,14 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                         CommandManager.literal("biome")
                                 .then(
                                         CommandManager.argument("biome", StringArgumentType.string())
-                                                .requires(Permissions.require("spawncontroller.biome", 4))
+                                                .requires(Permissions.require("spawncontroller.whitelist.add.biome", 4))
                                                 .suggests((context, builder)-> {
                                                     for (Biome biome : sc.getRegisteredBiomes()) {
-                                                        if (!sc.getBiomeWhitelist().contains(biome)) {
-                                                            sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> {
+                                                        sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key -> {
+                                                            if (!WhitelistConfig.whitelist.biomes.contains(key.getValue().toString()))
                                                                 builder.suggest("\"" + key.getValue().toString() + "\"");
-                                                            });
-                                                        }
+                                                        });
+
                                                     }
                                                     return builder.buildFuture();
                                                 })
@@ -73,7 +73,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                         CommandManager.literal("world")
                                 .then(
                                         CommandManager.argument("world", StringArgumentType.string())
-                                                .requires(Permissions.require("spawncontroller.world", 4))
+                                                .requires(Permissions.require("spawncontroller.whitelist.add.world", 4))
                                                 .suggests(((context, builder) -> {
                                                     sc.server.getWorlds().forEach(world -> builder.suggest("\"" + world.getRegistryKey().getValue().toString() + "\""));
                                                     return builder.buildFuture();
@@ -85,7 +85,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                         CommandManager.literal("generation")
                                 .then(
                                         CommandManager.argument("generation", StringArgumentType.string())
-                                                .requires(Permissions.require("spawncontroller.generation", 4))
+                                                .requires(Permissions.require("spawncontroller.whitelist.add.generation", 4))
                                                 .suggests((ctx, builder) -> {
                                                     for (String generation : sc.getGenerations()) {
                                                         builder.suggest(generation);
@@ -99,7 +99,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                         CommandManager.literal("form")
                                 .then(
                                         CommandManager.argument("form", StringArgumentType.string())
-                                                .requires(Permissions.require("spawncontroller.form", 4))
+                                                .requires(Permissions.require("spawncontroller.whitelist.add.form", 4))
                                                 .suggests((ctx, builder) -> {
                                                     for (String form : sc.getForms()) {
                                                         builder.suggest(form);
@@ -113,7 +113,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                         CommandManager.literal("group")
                                 .then(
                                         CommandManager.argument("group", StringArgumentType.string())
-                                                .requires(Permissions.require("spawncontroller.group", 4))
+                                                .requires(Permissions.require("spawncontroller.whitelist.add.group", 4))
                                                 .suggests((ctx, builder) -> {
                                                     for (String group : sc.getGroups()) {
                                                         builder.suggest(group);
@@ -127,7 +127,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
                         CommandManager.literal("customlabel")
                                 .then(
                                         CommandManager.argument("label", StringArgumentType.string())
-                                                .requires(Permissions.require("spawncontroller.customlabel", 4))
+                                                .requires(Permissions.require("spawncontroller.whitelist.add.customlabel", 4))
                                                 .executes(ctx -> whitelistLabel(ctx, "label"))
                                 )
                 );
@@ -135,7 +135,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int whitelistSpecies(CommandContext<ServerCommandSource> ctx) {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
-        if (sc.whitelistAdd(species)) {
+        if (sc.whitelistAddSpecies(species.showdownId())) {
             ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " has been whitelisted!"));
             WhitelistConfig.save();
             return 1;
@@ -152,7 +152,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
             AtomicReference<RegistryKey<Biome>> key = new AtomicReference<>();
             sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key::set);
             if ((key.get().getValue().toString()).equalsIgnoreCase(biomeString)) {
-                if (sc.whitelistAdd(biome)) {
+                if (sc.whitelistAddBiome(biomeString)) {
                     ctx.getSource().sendMessage(Text.literal(biomeString + " has been whitelisted!"));
                     WhitelistConfig.save();
                     return 1;
@@ -171,7 +171,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
         String worldString = StringArgumentType.getString(ctx, "world");
         for (ServerWorld world : sc.server.getWorlds()) {
             if ((world.getRegistryKey().getValue().toString()).equalsIgnoreCase(worldString)) {
-                if (sc.whitelistAdd(world)) {
+                if (sc.whitelistAddWorld(worldString)) {
                     ctx.getSource().sendMessage(Text.literal(worldString + " has been whitelisted!"));
                     WhitelistConfig.save();
                     return 1;

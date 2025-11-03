@@ -8,28 +8,26 @@ import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
 import me.unariginal.spawncontroller.config.BlacklistConfig;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.world.biome.Biome;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
     private final SpawnController sc = SpawnController.INSTANCE;
 
     protected Remove() {
         super("remove");
-
+        requires(Permissions.require("spawncontroller.blacklist.remove", 4));
         then(
                 CommandManager.literal("species")
                         .then(
                                 CommandManager.argument("species", SpeciesArgumentType.Companion.species())
-                                        .requires(Permissions.require("spawncontroller.species", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.species", 4))
                                         .suggests((context, builder) -> {
-                                            sc.getSpeciesBlacklist().forEach(species -> builder.suggest(species.showdownId().toLowerCase()));
+                                            BlacklistConfig.blacklist.species.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(this::enableSpecies)
@@ -39,13 +37,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("biome")
                         .then(
                                 CommandManager.argument("biome", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.biome", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.biome", 4))
                                         .suggests((context, builder)-> {
-                                            for (Biome biome : sc.getBiomeBlacklist()) {
-                                                sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key ->{
-                                                    builder.suggest("\"" + key.getValue().toString() + "\"");
-                                                });
-                                            }
+                                            BlacklistConfig.blacklist.biomes.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(this::enableBiome)
@@ -55,9 +49,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("world")
                         .then(
                                 CommandManager.argument("world", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.world", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.world", 4))
                                         .suggests(((context, builder) -> {
-                                            sc.getWorldBlacklist().forEach(world -> builder.suggest("\"" + world.getRegistryKey().getValue().toString() + "\""));
+                                            BlacklistConfig.blacklist.worlds.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         }))
                                         .executes(this::enableWorld)
@@ -67,11 +61,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("generation")
                         .then(
                                 CommandManager.argument("generation", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.generation", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.generation", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String generation : sc.getGenerationBlacklist()) {
-                                                builder.suggest(generation);
-                                            }
+                                            BlacklistConfig.blacklist.generations.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> enableLabel(ctx, "generation"))
@@ -81,11 +73,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("form")
                         .then(
                                 CommandManager.argument("form", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.form", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.form", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String form : sc.getFormBlacklist()) {
-                                                builder.suggest(form);
-                                            }
+                                            BlacklistConfig.blacklist.forms.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> enableLabel(ctx, "form"))
@@ -95,11 +85,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("group")
                         .then(
                                 CommandManager.argument("group", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.group", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.group", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String group : sc.getGroupBlacklist()) {
-                                                builder.suggest(group);
-                                            }
+                                            BlacklistConfig.blacklist.groups.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> enableLabel(ctx, "group"))
@@ -109,11 +97,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("customlabel")
                         .then(
                                 CommandManager.argument("label", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.customlabel", 4))
+                                        .requires(Permissions.require("spawncontroller.blacklist.remove.customlabel", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String label : sc.getCustomLabelBlacklist()) {
-                                                builder.suggest(label);
-                                            }
+                                            BlacklistConfig.blacklist.customLabels.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> enableLabel(ctx, "label"))
@@ -123,22 +109,22 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int enableSpecies(CommandContext<ServerCommandSource> ctx) {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
-        ArrayList<Species> toKeep = new ArrayList<>();
-        for (Species speciesIndex : sc.getSpeciesBlacklist()) {
-            if (!speciesIndex.equals(species)) {
+        ArrayList<String> toKeep = new ArrayList<>();
+        for (String speciesIndex : BlacklistConfig.blacklist.species) {
+            if (!speciesIndex.equalsIgnoreCase(species.showdownId())) {
                 toKeep.add(speciesIndex);
             }
         }
 
-        if (toKeep.size() == sc.getSpeciesBlacklist().size()) {
+        if (toKeep.size() == BlacklistConfig.blacklist.species.size()) {
             ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for species: " + species.showdownId().toLowerCase() + "!"));
             return 0;
         }
 
-        sc.clearSpeciesBlacklist();
+        BlacklistConfig.blacklist.species.clear();
 
-        for (Species label : toKeep) {
-            sc.blacklistAdd(label);
+        for (String label : toKeep) {
+            sc.blacklistAddSpecies(label);
         }
         BlacklistConfig.save();
         ctx.getSource().sendMessage(Text.literal("Enabled spawns for species: " + species.showdownId().toLowerCase() + "!"));
@@ -147,24 +133,22 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int enableBiome(CommandContext<ServerCommandSource> ctx) {
         String biomeString = StringArgumentType.getString(ctx, "biome");
-        ArrayList<Biome> toKeep = new ArrayList<>();
-        for (Biome biome : sc.getBiomeBlacklist()) {
-            sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key ->{
-                if (!((key.getValue().toString()).equalsIgnoreCase(biomeString))) {
-                    toKeep.add(biome);
-                }
-            });
+        ArrayList<String> toKeep = new ArrayList<>();
+        for (String biome : BlacklistConfig.blacklist.biomes) {
+            if (!biome.equalsIgnoreCase(biomeString)) {
+                toKeep.add(biome);
+            }
         }
 
-        if (toKeep.size() == sc.getBiomeBlacklist().size()) {
+        if (toKeep.size() == BlacklistConfig.blacklist.biomes.size()) {
             ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for biome: " + biomeString + "!"));
             return 0;
         }
 
-        sc.clearBiomeBlacklist();
+        BlacklistConfig.blacklist.biomes.clear();
 
-        for (Biome label : toKeep) {
-            sc.blacklistAdd(label);
+        for (String label : toKeep) {
+            sc.blacklistAddBiome(label);
         }
         BlacklistConfig.save();
         ctx.getSource().sendMessage(Text.literal("Enabled spawns for biome: " + biomeString + "!"));
@@ -173,22 +157,22 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int enableWorld(CommandContext<ServerCommandSource> ctx) {
         String worldString = StringArgumentType.getString(ctx, "world");
-        ArrayList<ServerWorld> toKeep = new ArrayList<>();
-        for (ServerWorld world : sc.getWorldBlacklist()) {
-            if (!(world.getRegistryKey().getValue().toString()).equalsIgnoreCase(worldString)) {
+        List<String> toKeep = new ArrayList<>();
+        for (String world : BlacklistConfig.blacklist.worlds) {
+            if (!world.equalsIgnoreCase(worldString)) {
                 toKeep.add(world);
             }
         }
 
-        if (toKeep.size() == sc.getWorldBlacklist().size()) {
+        if (toKeep.size() == BlacklistConfig.blacklist.worlds.size()) {
             ctx.getSource().sendMessage(Text.literal("Spawn is already enabled for world: " + worldString + "!"));
             return 0;
         }
 
-        sc.clearWorldBlacklist();
+        BlacklistConfig.blacklist.worlds.clear();
 
-        for (ServerWorld label : toKeep) {
-            sc.blacklistAdd(label);
+        for (String label : toKeep) {
+            sc.blacklistAddWorld(label);
         }
 
         BlacklistConfig.save();
@@ -201,17 +185,17 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         ArrayList<String> toKeep = new ArrayList<>();
         ArrayList<String> loopLabels = new ArrayList<>();
         if (type.equalsIgnoreCase("generation")) {
-            loopLabels.addAll(sc.getGenerationBlacklist());
-            sc.clearGenerationBlacklist();
+            loopLabels.addAll(BlacklistConfig.blacklist.generations);
+            BlacklistConfig.blacklist.generations.clear();
         } else if (type.equalsIgnoreCase("form")) {
-            loopLabels.addAll(sc.getFormBlacklist());
-            sc.clearFormBlacklist();
+            loopLabels.addAll(BlacklistConfig.blacklist.forms);
+            BlacklistConfig.blacklist.forms.clear();
         } else if (type.equalsIgnoreCase("group")) {
-            loopLabels.addAll(sc.getGroupBlacklist());
-            sc.clearGroupBlacklist();
+            loopLabels.addAll(BlacklistConfig.blacklist.groups);
+            BlacklistConfig.blacklist.groups.clear();
         } else if (type.equalsIgnoreCase("label")) {
-            loopLabels.addAll(sc.getCustomLabelBlacklist());
-            sc.clearCustomLabelBlacklist();
+            loopLabels.addAll(BlacklistConfig.blacklist.customLabels);
+            BlacklistConfig.blacklist.customLabels.clear();
         }
 
         for (String label : loopLabels) {

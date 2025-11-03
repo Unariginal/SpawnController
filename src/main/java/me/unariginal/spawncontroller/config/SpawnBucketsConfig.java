@@ -16,6 +16,8 @@ public class SpawnBucketsConfig {
             .create();
 
     public static void load() throws IOException {
+        File rootFolder = FabricLoader.getInstance().getConfigDir().resolve("SpawnController").toFile();
+        if (!rootFolder.exists()) rootFolder.mkdirs();
         File spawnBucketsFile = FabricLoader.getInstance().getConfigDir().resolve("SpawnController/spawn_buckets.json").toFile();
 
         if (!spawnBucketsFile.exists()) save();

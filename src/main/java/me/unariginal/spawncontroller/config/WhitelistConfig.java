@@ -18,6 +18,8 @@ public class WhitelistConfig {
     public static ListData whitelist = new ListData(List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of());
 
     public static void load() throws IOException {
+        File rootFolder = FabricLoader.getInstance().getConfigDir().resolve("SpawnController").toFile();
+        if (!rootFolder.exists()) rootFolder.mkdirs();
         File whitelistFile = FabricLoader.getInstance().getConfigDir().resolve("SpawnController/whitelist.json").toFile();
         if (!whitelistFile.exists()) save();
         else whitelist = gson.fromJson(JsonParser.parseReader(new FileReader(whitelistFile)).toString(), ListData.class);

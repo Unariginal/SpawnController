@@ -7,7 +7,6 @@ import com.cobblemon.mod.common.api.spawning.*;
 import com.cobblemon.mod.common.api.spawning.condition.*;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.cobblemon.mod.common.pokemon.Species;
 import kotlin.Unit;
 import me.unariginal.spawncontroller.commands.ControllerCommand;
 import me.unariginal.spawncontroller.config.BlacklistConfig;
@@ -16,6 +15,7 @@ import me.unariginal.spawncontroller.config.WhitelistConfig;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
@@ -26,26 +26,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SpawnController implements ModInitializer {
     public static final String MOD_ID = "spawncontroller";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
-    private final List<Species> speciesBlacklist = new ArrayList<>();
-    private final List<ServerWorld> worldBlacklist = new ArrayList<>();
-    private final List<Biome> biomeBlacklist = new ArrayList<>();
-    private final List<String> generationBlacklist = new ArrayList<>();
-    private final List<String> formBlacklist = new ArrayList<>();
-    private final List<String> groupBlacklist = new ArrayList<>();
-    private final List<String> customLabelBlacklist = new ArrayList<>();
-
-    private final List<Species> speciesWhitelist = new ArrayList<>();
-    private final List<ServerWorld> worldWhitelist = new ArrayList<>();
-    private final List<Biome> biomeWhitelist = new ArrayList<>();
-    private final List<String> generationWhitelist = new ArrayList<>();
-    private final List<String> formWhitelist = new ArrayList<>();
-    private final List<String> groupWhitelist = new ArrayList<>();
-    private final List<String> customLabelWhitelist = new ArrayList<>();
 
     private final List<Biome> registeredBiomes = new ArrayList<>();
 
@@ -112,45 +97,56 @@ public class SpawnController implements ModInitializer {
                 registeredBiomes.addAll(world.getRegistryManager().get(RegistryKeys.BIOME).stream().toList());
             }
 
+            reload();
+
             LOGGER.info("[SpawnController] Loaded!");
 
             CobblemonEvents.POKEMON_ENTITY_SPAWN.subscribe(Priority.NORMAL, event -> {
                 PokemonEntity pokemonEntity = event.getEntity();
                 Pokemon pokemon = pokemonEntity.getPokemon();
-                ServerWorld world = event.getCtx().getWorld();
-                Biome biome = event.getCtx().getBiome();
 
-                for (Species species : speciesBlacklist) {
-                    if (pokemon.getSpecies().equals(species)) {
+                ServerWorld world = event.getSpawnablePosition().getWorld();
+                Biome biome = event.getSpawnablePosition().getBiome();
+
+                for (String species : BlacklistConfig.blacklist.species) {
+                    if (pokemon.getSpecies().showdownId().equalsIgnoreCase(species)) {
                         event.cancel();
                     }
                 }
 
-                for (ServerWorld blWorld : worldBlacklist) {
-                    if (world.equals(blWorld)) {
+                for (String worldID : BlacklistConfig.blacklist.worlds) {
+                    if (world.getRegistryKey().getRegistry().toString().equalsIgnoreCase(worldID)) {
                         event.cancel();
                     }
                 }
 
-                for (Biome blBiome : biomeBlacklist) {
-                    if (biome.equals(blBiome)) {
+                for (String biomeID : BlacklistConfig.blacklist.biomes) {
+                    AtomicReference<RegistryKey<Biome>> key = new AtomicReference<>();
+                    server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key::set);
+                    if ((key.get().getValue().toString()).equalsIgnoreCase(biomeID)) {
                         event.cancel();
                     }
                 }
 
-                for (String label : generationBlacklist) {
+                for (String label : BlacklistConfig.blacklist.generations) {
                     if (pokemon.getForm().getLabels().contains(label)) {
                         event.cancel();
                     }
                 }
 
-                for (String label : formBlacklist) {
+                for (String label : BlacklistConfig.blacklist.forms) {
                     if (pokemon.getForm().getLabels().contains(label)) {
                         event.cancel();
                     }
                 }
 
-                for (String label : groupBlacklist) {
+                for (String label : BlacklistConfig.blacklist.groups) {
+                    if (pokemon.getForm().getLabels().contains(label)) {
+                        event.cancel();
+                    }
+                }
+
+                for (String label : BlacklistConfig.blacklist.customLabels) {
                     if (pokemon.getForm().getLabels().contains(label)) {
                         event.cancel();
                     }
@@ -171,76 +167,76 @@ public class SpawnController implements ModInitializer {
         }
     }
 
-    public boolean blacklistAdd(Species species) {
-        for (Species existingSpecies : speciesBlacklist) {
-            if (existingSpecies.equals(species)) {
+    public boolean blacklistAddSpecies(String species) {
+        for (String existingSpecies : BlacklistConfig.blacklist.species) {
+            if (existingSpecies.equalsIgnoreCase(species)) {
                 return false;
             }
         }
-        speciesBlacklist.add(species);
+        BlacklistConfig.blacklist.species.add(species);
         return true;
     }
 
-    public boolean whitelistAdd(Species species) {
-        for (Species existingSpecies : speciesWhitelist) {
-            if (existingSpecies.equals(species)) {
+    public boolean whitelistAddSpecies(String species) {
+        for (String existingSpecies : WhitelistConfig.whitelist.species) {
+            if (existingSpecies.equalsIgnoreCase(species)) {
                 return false;
             }
         }
-        speciesWhitelist.add(species);
+        WhitelistConfig.whitelist.species.add(species);
         return true;
     }
 
-    public boolean blacklistAdd(ServerWorld world) {
-        for (ServerWorld existingWorld : worldBlacklist) {
-            if (existingWorld.equals(world)) {
+    public boolean blacklistAddWorld(String worldID) {
+        for (String existingWorld : BlacklistConfig.blacklist.worlds) {
+            if (existingWorld.equalsIgnoreCase(worldID)) {
                 return false;
             }
         }
-        worldBlacklist.add(world);
+        BlacklistConfig.blacklist.worlds.add(worldID);
         return true;
     }
 
-    public boolean whitelistAdd(ServerWorld world) {
-        for (ServerWorld existingWorld : worldWhitelist) {
-            if (existingWorld.equals(world)) {
+    public boolean whitelistAddWorld(String worldID) {
+        for (String existingWorld : WhitelistConfig.whitelist.worlds) {
+            if (existingWorld.equalsIgnoreCase(worldID)) {
                 return false;
             }
         }
-        worldWhitelist.add(world);
+        WhitelistConfig.whitelist.worlds.add(worldID);
         return true;
     }
 
-    public boolean blacklistAdd(Biome biome) {
-        for (Biome existingBiome : biomeBlacklist) {
-            if (existingBiome.equals(biome)) {
+    public boolean blacklistAddBiome(String biome) {
+        for (String existingBiome : BlacklistConfig.blacklist.biomes) {
+            if (existingBiome.equalsIgnoreCase(biome)) {
                 return false;
             }
         }
-        biomeBlacklist.add(biome);
+        BlacklistConfig.blacklist.biomes.add(biome);
         return true;
     }
 
-    public boolean whitelistAdd(Biome biome) {
-        for (Biome existingBiome : biomeWhitelist) {
-            if (existingBiome.equals(biome)) {
+    public boolean whitelistAddBiome(String biome) {
+        for (String existingBiome : WhitelistConfig.whitelist.biomes) {
+            if (existingBiome.equalsIgnoreCase(biome)) {
                 return false;
             }
         }
-        biomeWhitelist.add(biome);
+        WhitelistConfig.whitelist.biomes.add(biome);
         return true;
     }
 
     public boolean blacklistAdd(String label, String type) {
         ArrayList<String> loopLabels = new ArrayList<>();
         if (type.equalsIgnoreCase("generation")) {
-            loopLabels.addAll(generationBlacklist);
+            loopLabels.addAll(BlacklistConfig.blacklist.generations);
         } else if (type.equalsIgnoreCase("form")) {
-            loopLabels.addAll(formBlacklist);
+            loopLabels.addAll(BlacklistConfig.blacklist.forms);
         } else if (type.equalsIgnoreCase("group")) {
-            loopLabels.addAll(groupBlacklist);
+            loopLabels.addAll(BlacklistConfig.blacklist.groups);
         } else if (type.equalsIgnoreCase("label")) {
-            loopLabels.addAll(customLabelBlacklist);
+            loopLabels.addAll(BlacklistConfig.blacklist.customLabels);
         }
 
         for (String existingLabel : loopLabels) {
@@ -250,13 +246,13 @@ public class SpawnController implements ModInitializer {
         }
 
         if (type.equalsIgnoreCase("generation")) {
-            generationBlacklist.add(label);
+            BlacklistConfig.blacklist.generations.add(label);
         } else if (type.equalsIgnoreCase("form")) {
-            formBlacklist.add(label);
+            BlacklistConfig.blacklist.forms.add(label);
         } else if (type.equalsIgnoreCase("group")) {
-            groupBlacklist.add(label);
+            BlacklistConfig.blacklist.groups.add(label);
         } else if (type.equalsIgnoreCase("label")) {
-            customLabelBlacklist.add(label);
+            BlacklistConfig.blacklist.customLabels.add(label);
         }
 
         return true;
@@ -265,13 +261,13 @@ public class SpawnController implements ModInitializer {
     public boolean whitelistAdd(String label, String type) {
         ArrayList<String> loopLabels = new ArrayList<>();
         if (type.equalsIgnoreCase("generation")) {
-            loopLabels.addAll(generationWhitelist);
+            loopLabels.addAll(WhitelistConfig.whitelist.generations);
         } else if (type.equalsIgnoreCase("form")) {
-            loopLabels.addAll(formWhitelist);
+            loopLabels.addAll(WhitelistConfig.whitelist.forms);
         } else if (type.equalsIgnoreCase("group")) {
-            loopLabels.addAll(groupWhitelist);
+            loopLabels.addAll(WhitelistConfig.whitelist.groups);
         } else if (type.equalsIgnoreCase("label")) {
-            loopLabels.addAll(customLabelWhitelist);
+            loopLabels.addAll(WhitelistConfig.whitelist.customLabels);
         }
 
         for (String existingLabel : loopLabels) {
@@ -281,128 +277,16 @@ public class SpawnController implements ModInitializer {
         }
 
         if (type.equalsIgnoreCase("generation")) {
-            generationWhitelist.add(label);
+            WhitelistConfig.whitelist.generations.add(label);
         } else if (type.equalsIgnoreCase("form")) {
-            formWhitelist.add(label);
+            WhitelistConfig.whitelist.forms.add(label);
         } else if (type.equalsIgnoreCase("group")) {
-            groupWhitelist.add(label);
+            WhitelistConfig.whitelist.groups.add(label);
         } else if (type.equalsIgnoreCase("label")) {
-            customLabelWhitelist.add(label);
+            WhitelistConfig.whitelist.customLabels.add(label);
         }
 
         return true;
-    }
-
-    public List<Species> getSpeciesBlacklist() {
-        return speciesBlacklist;
-    }
-
-    public void clearSpeciesBlacklist() {
-        speciesBlacklist.clear();
-    }
-
-    public List<Species> getSpeciesWhitelist() {
-        return speciesWhitelist;
-    }
-
-    public void clearSpeciesWhitelist() {
-        speciesWhitelist.clear();
-    }
-
-    public List<ServerWorld> getWorldBlacklist() {
-        return worldBlacklist;
-    }
-
-    public void clearWorldBlacklist() {
-        worldBlacklist.clear();
-    }
-
-    public List<ServerWorld> getWorldWhitelist() {
-        return worldWhitelist;
-    }
-
-    public void clearWorldWhitelist() {
-        worldWhitelist.clear();
-    }
-
-    public List<Biome> getBiomeBlacklist() {
-        return biomeBlacklist;
-    }
-
-    public void clearBiomeBlacklist() {
-        biomeBlacklist.clear();
-    }
-
-    public List<Biome> getBiomeWhitelist() {
-        return biomeWhitelist;
-    }
-
-    public void clearBiomeWhitelist() {
-        biomeWhitelist.clear();
-    }
-
-    public List<String> getGenerationBlacklist() {
-        return generationBlacklist;
-    }
-
-    public void clearGenerationBlacklist() {
-        generationBlacklist.clear();
-    }
-
-    public List<String> getGenerationWhitelist() {
-        return generationWhitelist;
-    }
-
-    public void clearGenerationWhitelist() {
-        generationWhitelist.clear();
-    }
-
-    public List<String> getFormBlacklist() {
-        return formBlacklist;
-    }
-
-    public void clearFormBlacklist() {
-        formBlacklist.clear();
-    }
-
-    public List<String> getFormWhitelist() {
-        return formWhitelist;
-    }
-
-    public void clearFormWhitelist() {
-        formWhitelist.clear();
-    }
-
-    public List<String> getGroupBlacklist() {
-        return groupBlacklist;
-    }
-
-    public void clearGroupBlacklist() {
-        groupBlacklist.clear();
-    }
-
-    public List<String> getGroupWhitelist() {
-        return groupWhitelist;
-    }
-
-    public void clearGroupWhitelist() {
-        groupWhitelist.clear();
-    }
-
-    public List<String> getCustomLabelBlacklist() {
-        return customLabelBlacklist;
-    }
-
-    public void clearCustomLabelBlacklist() {
-        customLabelBlacklist.clear();
-    }
-
-    public List<String> getCustomLabelWhitelist() {
-        return customLabelWhitelist;
-    }
-
-    public void clearCustomLabelWhitelist() {
-        customLabelWhitelist.clear();
     }
 
     public List<String> getGenerations() {

@@ -8,12 +8,9 @@ import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
 import me.unariginal.spawncontroller.config.WhitelistConfig;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.world.biome.Biome;
 
 import java.util.ArrayList;
 
@@ -22,14 +19,14 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     protected Remove() {
         super("remove");
-
+        requires(Permissions.require("spawncontroller.whitelist.remove", 4));
         then(
                 CommandManager.literal("species")
                         .then(
                                 CommandManager.argument("species", SpeciesArgumentType.Companion.species())
-                                        .requires(Permissions.require("spawncontroller.species", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.species", 4))
                                         .suggests((context, builder) -> {
-                                            sc.getSpeciesWhitelist().forEach(species -> builder.suggest(species.showdownId().toLowerCase()));
+                                            WhitelistConfig.whitelist.species.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(this::unWhitelistSpecies)
@@ -39,13 +36,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("biome")
                         .then(
                                 CommandManager.argument("biome", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.biome", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.biome", 4))
                                         .suggests((context, builder)-> {
-                                            for (Biome biome : sc.getBiomeWhitelist()) {
-                                                sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key ->{
-                                                    builder.suggest("\"" + key.getValue().toString() + "\"");
-                                                });
-                                            }
+                                            WhitelistConfig.whitelist.biomes.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(this::unWhitelistBiome)
@@ -55,9 +48,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("world")
                         .then(
                                 CommandManager.argument("world", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.world", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.world", 4))
                                         .suggests(((context, builder) -> {
-                                            sc.getWorldWhitelist().forEach(world -> builder.suggest("\"" + world.getRegistryKey().getValue().toString() + "\""));
+                                            WhitelistConfig.whitelist.worlds.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         }))
                                         .executes(this::unWhitelistWorld)
@@ -67,11 +60,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("generation")
                         .then(
                                 CommandManager.argument("generation", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.generation", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.generation", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String generation : sc.getGenerationWhitelist()) {
-                                                builder.suggest(generation);
-                                            }
+                                            WhitelistConfig.whitelist.generations.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> unWhitelistLabel(ctx, "generation"))
@@ -81,11 +72,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("form")
                         .then(
                                 CommandManager.argument("form", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.form", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.form", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String form : sc.getFormWhitelist()) {
-                                                builder.suggest(form);
-                                            }
+                                            WhitelistConfig.whitelist.forms.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> unWhitelistLabel(ctx, "form"))
@@ -95,11 +84,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("group")
                         .then(
                                 CommandManager.argument("group", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.group", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.group", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String group : sc.getGroupWhitelist()) {
-                                                builder.suggest(group);
-                                            }
+                                            WhitelistConfig.whitelist.groups.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> unWhitelistLabel(ctx, "group"))
@@ -109,11 +96,9 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
                 CommandManager.literal("customlabel")
                         .then(
                                 CommandManager.argument("label", StringArgumentType.string())
-                                        .requires(Permissions.require("spawncontroller.customlabel", 4))
+                                        .requires(Permissions.require("spawncontroller.whitelist.remove.customlabel", 4))
                                         .suggests((ctx, builder) -> {
-                                            for (String label : sc.getCustomLabelWhitelist()) {
-                                                builder.suggest(label);
-                                            }
+                                            WhitelistConfig.whitelist.customLabels.forEach(builder::suggest);
                                             return builder.buildFuture();
                                         })
                                         .executes(ctx -> unWhitelistLabel(ctx, "label"))
@@ -123,23 +108,20 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int unWhitelistSpecies(CommandContext<ServerCommandSource> ctx) {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
-        ArrayList<Species> toKeep = new ArrayList<>();
-        for (Species speciesIndex : sc.getSpeciesWhitelist()) {
-            if (!speciesIndex.equals(species)) {
+        ArrayList<String> toKeep = new ArrayList<>();
+        for (String speciesIndex : WhitelistConfig.whitelist.species) {
+            if (!speciesIndex.equalsIgnoreCase(species.showdownId())) {
                 toKeep.add(speciesIndex);
             }
         }
 
-        if (toKeep.size() == sc.getSpeciesWhitelist().size()) {
+        if (toKeep.size() == WhitelistConfig.whitelist.species.size()) {
             ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " is not whitelisted!"));
             return 0;
         }
 
-        sc.clearSpeciesWhitelist();
+        WhitelistConfig.whitelist.species.removeIf(item -> !toKeep.contains(item));
 
-        for (Species label : toKeep) {
-            sc.whitelistAdd(label);
-        }
         WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " has been removed from the whitelist!"));
         return 1;
@@ -147,25 +129,20 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int unWhitelistBiome(CommandContext<ServerCommandSource> ctx) {
         String biomeString = StringArgumentType.getString(ctx, "biome");
-        ArrayList<Biome> toKeep = new ArrayList<>();
-        for (Biome biome : sc.getBiomeWhitelist()) {
-            sc.server.getOverworld().getRegistryManager().get(RegistryKeys.BIOME).getEntry(biome).getKey().ifPresent(key ->{
-                if (!((key.getValue().toString()).equalsIgnoreCase(biomeString))) {
-                    toKeep.add(biome);
-                }
-            });
+        ArrayList<String> toKeep = new ArrayList<>();
+        for (String biome : WhitelistConfig.whitelist.biomes) {
+            if (!biome.equalsIgnoreCase(biomeString)) {
+                toKeep.add(biome);
+            }
         }
 
-        if (toKeep.size() == sc.getBiomeWhitelist().size()) {
+        if (toKeep.size() == WhitelistConfig.whitelist.biomes.size()) {
             ctx.getSource().sendMessage(Text.literal(biomeString + " is not whitelisted!"));
             return 0;
         }
 
-        sc.clearBiomeWhitelist();
+        WhitelistConfig.whitelist.biomes.removeIf(item -> !toKeep.contains(item));
 
-        for (Biome label : toKeep) {
-            sc.whitelistAdd(label);
-        }
         WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(biomeString + " has been removed from the whitelist!"));
         return 1;
@@ -173,23 +150,19 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
 
     public int unWhitelistWorld(CommandContext<ServerCommandSource> ctx) {
         String worldString = StringArgumentType.getString(ctx, "world");
-        ArrayList<ServerWorld> toKeep = new ArrayList<>();
-        for (ServerWorld world : sc.getWorldWhitelist()) {
-            if (!(world.getRegistryKey().getValue().toString()).equalsIgnoreCase(worldString)) {
+        ArrayList<String> toKeep = new ArrayList<>();
+        for (String world : WhitelistConfig.whitelist.worlds) {
+            if (!world.equalsIgnoreCase(worldString)) {
                 toKeep.add(world);
             }
         }
 
-        if (toKeep.size() == sc.getWorldWhitelist().size()) {
+        if (toKeep.size() == WhitelistConfig.whitelist.worlds.size()) {
             ctx.getSource().sendMessage(Text.literal(worldString + " is not whitelisted!"));
             return 0;
         }
 
-        sc.clearWorldWhitelist();
-
-        for (ServerWorld label : toKeep) {
-            sc.whitelistAdd(label);
-        }
+        WhitelistConfig.whitelist.worlds.removeIf(item -> !toKeep.contains(item));
 
         WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(worldString + " has been removed from the whitelist!"));
@@ -201,17 +174,17 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         ArrayList<String> toKeep = new ArrayList<>();
         ArrayList<String> loopLabels = new ArrayList<>();
         if (type.equalsIgnoreCase("generation")) {
-            loopLabels.addAll(sc.getGenerationWhitelist());
-            sc.clearGenerationWhitelist();
+            loopLabels.addAll(WhitelistConfig.whitelist.generations);
+            WhitelistConfig.whitelist.generations.clear();
         } else if (type.equalsIgnoreCase("form")) {
-            loopLabels.addAll(sc.getFormWhitelist());
-            sc.clearFormWhitelist();
+            loopLabels.addAll(WhitelistConfig.whitelist.forms);
+            WhitelistConfig.whitelist.forms.clear();
         } else if (type.equalsIgnoreCase("group")) {
-            loopLabels.addAll(sc.getGroupWhitelist());
-            sc.clearGroupWhitelist();
+            loopLabels.addAll(WhitelistConfig.whitelist.groups);
+            WhitelistConfig.whitelist.groups.clear();
         } else if (type.equalsIgnoreCase("label")) {
-            loopLabels.addAll(sc.getCustomLabelWhitelist());
-            sc.clearCustomLabelWhitelist();
+            loopLabels.addAll(WhitelistConfig.whitelist.customLabels);
+            WhitelistConfig.whitelist.customLabels.clear();
         }
 
         for (String label : loopLabels) {
