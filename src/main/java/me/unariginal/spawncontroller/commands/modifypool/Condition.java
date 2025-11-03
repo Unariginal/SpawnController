@@ -13,7 +13,6 @@ import me.unariginal.spawncontroller.commands.suggestions.BooleanSuggestion;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import org.jetbrains.annotations.Nullable;
-import org.spongepowered.asm.mixin.injection.struct.InjectorGroupInfo;
 
 import java.util.ArrayList;
 import java.util.List;

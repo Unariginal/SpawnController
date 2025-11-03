@@ -1,11 +1,9 @@
 package me.unariginal.spawncontroller.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.tree.LiteralCommandNode;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
 import me.unariginal.spawncontroller.commands.blacklist.Blacklist;
-import me.unariginal.spawncontroller.commands.modifypool.ModifyPool;
 import me.unariginal.spawncontroller.commands.whitelist.Whitelist;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.server.command.CommandManager;
@@ -40,9 +38,9 @@ public class ControllerCommand {
                         .then(
                                 new SpawnInfo()
                         )
-                        .then(
-                                new ModifyPool()
-                        )
+//                        .then(
+//                                new ModifyPool()
+//                        )
         );
         dispatcher.register(
                 CommandManager.literal("spawncontroller")
@@ -67,9 +65,9 @@ public class ControllerCommand {
                         .then(
                                 new SpawnInfo()
                         )
-                        .then(
-                                new ModifyPool()
-                        )
+//                        .then(
+//                                new ModifyPool()
+//                        )
         );
     }
 }

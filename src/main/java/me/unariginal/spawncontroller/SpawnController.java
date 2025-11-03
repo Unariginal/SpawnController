@@ -1,59 +1,31 @@
 package me.unariginal.spawncontroller;
 
 import com.cobblemon.mod.common.api.Priority;
-import com.cobblemon.mod.common.api.conditional.RegistryLikeCondition;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
-import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.pokemon.labels.CobblemonPokemonLabels;
 import com.cobblemon.mod.common.api.spawning.*;
 import com.cobblemon.mod.common.api.spawning.condition.*;
-import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail;
-import com.cobblemon.mod.common.api.spawning.detail.SpawnDetail;
-import com.cobblemon.mod.common.api.spawning.detail.SpawnPool;
-import com.cobblemon.mod.common.api.spawning.multiplier.WeightMultiplier;
-import com.cobblemon.mod.common.command.argument.SpawnBucketArgumentType;
-import com.cobblemon.mod.common.command.argument.SpeciesArgumentType;
-import com.cobblemon.mod.common.data.CobblemonDataProvider;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
-import com.mojang.brigadier.arguments.FloatArgumentType;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.datafixers.util.Either;
 import kotlin.Unit;
-import kotlin.ranges.IntRange;
-import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.commands.ControllerCommand;
+import me.unariginal.spawncontroller.config.BlacklistConfig;
+import me.unariginal.spawncontroller.config.SpawnBucketsConfig;
+import me.unariginal.spawncontroller.config.WhitelistConfig;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.fluid.Fluid;
-import net.minecraft.item.Item;
 import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.HoverEvent;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.world.biome.Biome;
-import net.minecraft.world.gen.structure.Structure;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public class SpawnController implements ModInitializer {
     public static final String MOD_ID = "spawncontroller";
@@ -123,7 +95,6 @@ public class SpawnController implements ModInitializer {
     );
 
     public static SpawnController INSTANCE;
-    public Config config;
     public MinecraftServer server;
 
     @Override
@@ -140,8 +111,6 @@ public class SpawnController implements ModInitializer {
             for (ServerWorld world : server.getWorlds()) {
                 registeredBiomes.addAll(world.getRegistryManager().get(RegistryKeys.BIOME).stream().toList());
             }
-
-            config = new Config();
 
             LOGGER.info("[SpawnController] Loaded!");
 
@@ -193,7 +162,13 @@ public class SpawnController implements ModInitializer {
     }
 
     public void reload() {
-        this.config = new Config();
+        try {
+            WhitelistConfig.load();
+            BlacklistConfig.load();
+            SpawnBucketsConfig.load();
+        } catch (IOException e) {
+            LOGGER.error("[SpawnController] Failed to load config!");
+        }
     }
 
     public boolean blacklistAdd(Species species) {

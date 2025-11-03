@@ -2,13 +2,13 @@ package me.unariginal.spawncontroller.commands.whitelist;
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.command.argument.SpeciesArgumentType;
-import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
+import me.unariginal.spawncontroller.config.WhitelistConfig;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
@@ -137,7 +137,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
         if (sc.whitelistAdd(species)) {
             ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " has been whitelisted!"));
-            sc.config.updateWhitelist();
+            WhitelistConfig.save();
             return 1;
         } else {
             ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " is already whitelisted!"));
@@ -154,7 +154,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
             if ((key.get().getValue().toString()).equalsIgnoreCase(biomeString)) {
                 if (sc.whitelistAdd(biome)) {
                     ctx.getSource().sendMessage(Text.literal(biomeString + " has been whitelisted!"));
-                    sc.config.updateWhitelist();
+                    WhitelistConfig.save();
                     return 1;
                 } else {
                     ctx.getSource().sendMessage(Text.literal(biomeString + " is already whitelisted!"));
@@ -173,7 +173,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
             if ((world.getRegistryKey().getValue().toString()).equalsIgnoreCase(worldString)) {
                 if (sc.whitelistAdd(world)) {
                     ctx.getSource().sendMessage(Text.literal(worldString + " has been whitelisted!"));
-                    sc.config.updateWhitelist();
+                    WhitelistConfig.save();
                     return 1;
                 } else {
                     ctx.getSource().sendMessage(Text.literal(worldString + " is already whitelisted!"));
@@ -190,7 +190,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
         String labelString = StringArgumentType.getString(ctx, type);
         if (sc.whitelistAdd(labelString, type)) {
             ctx.getSource().sendMessage(Text.literal(type + " " + labelString + " has been whitelisted!"));
-            sc.config.updateWhitelist();
+            WhitelistConfig.save();
             return 1;
         } else {
             ctx.getSource().sendMessage(Text.literal(type + " " + labelString + " is already whitelisted!"));

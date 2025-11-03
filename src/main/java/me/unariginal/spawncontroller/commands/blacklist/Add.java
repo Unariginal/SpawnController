@@ -2,13 +2,13 @@ package me.unariginal.spawncontroller.commands.blacklist;
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.command.argument.SpeciesArgumentType;
-import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
+import me.unariginal.spawncontroller.config.BlacklistConfig;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
@@ -137,7 +137,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
         Species species = SpeciesArgumentType.Companion.getPokemon(ctx, "species");
         if (sc.blacklistAdd(species)) {
             ctx.getSource().sendMessage(Text.literal("Disabled spawns for species: " + species.showdownId().toLowerCase() + "!"));
-            sc.config.updateBlacklist();
+            BlacklistConfig.save();
             return 1;
         } else {
             ctx.getSource().sendMessage(Text.literal("Spawn is already disabled for species: " + species.showdownId().toLowerCase() + "!"));
@@ -154,7 +154,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
             if ((key.get().getValue().toString()).equalsIgnoreCase(biomeString)) {
                 if (sc.blacklistAdd(biome)) {
                     ctx.getSource().sendMessage(Text.literal("Disabled spawns in biome " + biomeString + "!"));
-                    sc.config.updateBlacklist();
+                    BlacklistConfig.save();
                     return 1;
                 } else {
                     ctx.getSource().sendMessage(Text.literal("Spawn is already disabled in biome " + biomeString + "!"));
@@ -173,7 +173,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
             if ((world.getRegistryKey().getValue().toString()).equalsIgnoreCase(worldString)) {
                 if (sc.blacklistAdd(world)) {
                     ctx.getSource().sendMessage(Text.literal("Disabled spawns in world " + worldString + "!"));
-                    sc.config.updateBlacklist();
+                    BlacklistConfig.save();
                     return 1;
                 } else {
                     ctx.getSource().sendMessage(Text.literal("Spawn is already disabled in world " + worldString + "!"));
@@ -190,7 +190,7 @@ public class Add extends LiteralArgumentBuilder<ServerCommandSource> {
         String labelString = StringArgumentType.getString(ctx, type);
         if (sc.blacklistAdd(labelString, type)) {
             ctx.getSource().sendMessage(Text.literal("Disabled spawns for " + type + ": " + labelString + "!"));
-            sc.config.updateBlacklist();
+            BlacklistConfig.save();
             return 1;
         } else {
             ctx.getSource().sendMessage(Text.literal("Spawn is already disabled for " + type + ": " + labelString + "!"));

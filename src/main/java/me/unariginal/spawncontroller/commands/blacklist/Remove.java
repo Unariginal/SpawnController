@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
+import me.unariginal.spawncontroller.config.BlacklistConfig;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
@@ -139,7 +140,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         for (Species label : toKeep) {
             sc.blacklistAdd(label);
         }
-        sc.config.updateBlacklist();
+        BlacklistConfig.save();
         ctx.getSource().sendMessage(Text.literal("Enabled spawns for species: " + species.showdownId().toLowerCase() + "!"));
         return 1;
     }
@@ -165,7 +166,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         for (Biome label : toKeep) {
             sc.blacklistAdd(label);
         }
-        sc.config.updateBlacklist();
+        BlacklistConfig.save();
         ctx.getSource().sendMessage(Text.literal("Enabled spawns for biome: " + biomeString + "!"));
         return 1;
     }
@@ -190,7 +191,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
             sc.blacklistAdd(label);
         }
 
-        sc.config.updateBlacklist();
+        BlacklistConfig.save();
         ctx.getSource().sendMessage(Text.literal("Enabled spawns for world: " + worldString + "!"));
         return 1;
     }
@@ -228,7 +229,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
             sc.blacklistAdd(label, type);
         }
 
-        sc.config.updateBlacklist();
+        BlacklistConfig.save();
         ctx.getSource().sendMessage(Text.literal("Enabled spawns for " + type + ": " + labelString + "!"));
         return 1;
     }

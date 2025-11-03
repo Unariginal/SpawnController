@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import me.unariginal.spawncontroller.SpawnController;
+import me.unariginal.spawncontroller.config.WhitelistConfig;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
@@ -139,7 +140,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         for (Species label : toKeep) {
             sc.whitelistAdd(label);
         }
-        sc.config.updateWhitelist();
+        WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(species.showdownId().toLowerCase() + " has been removed from the whitelist!"));
         return 1;
     }
@@ -165,7 +166,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
         for (Biome label : toKeep) {
             sc.whitelistAdd(label);
         }
-        sc.config.updateWhitelist();
+        WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(biomeString + " has been removed from the whitelist!"));
         return 1;
     }
@@ -190,7 +191,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
             sc.whitelistAdd(label);
         }
 
-        sc.config.updateWhitelist();
+        WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(worldString + " has been removed from the whitelist!"));
         return 1;
     }
@@ -228,7 +229,7 @@ public class Remove extends LiteralArgumentBuilder<ServerCommandSource> {
             sc.whitelistAdd(label, type);
         }
 
-        sc.config.updateWhitelist();
+        WhitelistConfig.save();
         ctx.getSource().sendMessage(Text.literal(type + " " + labelString + " has been removed from the whitelist!"));
         return 1;
     }
