@@ -108,6 +108,8 @@ public class SpawnController implements ModInitializer {
                 ServerWorld world = event.getSpawnablePosition().getWorld();
                 Biome biome = event.getSpawnablePosition().getBiome();
 
+                if (event.getSpawnablePosition().getSpawner().getName().startsWith("poke_snack_")) return Unit.INSTANCE;
+
                 for (String species : BlacklistConfig.blacklist.species) {
                     if (pokemon.getSpecies().showdownId().equalsIgnoreCase(species)) {
                         event.cancel();
